@@ -1,26 +1,99 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800;900&display=swap');
+
+*,
 html,
 body {
-  padding: 0;
-  margin: 0;
-  font-family: -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Oxygen,
-    Ubuntu, Cantarell, Fira Sans, Droid Sans, Helvetica Neue, sans-serif;
+  font-family: 'Poppins', sans-serif;
 }
 
-a {
-  color: inherit;
-  text-decoration: none;
+.position-center {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
 }
 
-* {
-  box-sizing: border-box;
+.scroll-style::-webkit-scrollbar-track {
+  background-color: #ffffff;
 }
 
-@media (prefers-color-scheme: dark) {
-  html {
-    color-scheme: dark;
+.scroll-style::-webkit-scrollbar {
+  width: 4px;
+  background-color: #ffffff;
+}
+
+.scroll-style::-webkit-scrollbar-thumb {
+  background-color: #000000;
+}
+
+.box {
+  max-width: 80%;
+  width: 150px;
+  margin: auto;
+}
+
+.fold-corner-card {
+  margin: 1em;
+  padding: 1.5em;
+}
+
+.fold-corner-card {
+  background: -webkit-linear-gradient(225deg, transparent 50%, #c9ccd4 50%),
+    -webkit-linear-gradient(45deg, #f8f8f8, #f8f8f8),
+    -webkit-linear-gradient(135deg, #f8f8f8, #f8f8f8),
+    -webkit-linear-gradient(225deg, transparent 10px, #f8f8f8 10px);
+  background: -moz-linear-gradient(225deg, transparent 50%, #c9ccd4 50%),
+    -moz-linear-gradient(45deg, #f8f8f8, #f8f8f8),
+    -moz-linear-gradient(135deg, #f8f8f8, #f8f8f8),
+    -moz-linear-gradient(225deg, transparent 10px, #f8f8f8 10px);
+  background: -o-linear-gradient(225deg, transparent 50%, #c9ccd4 50%),
+    -o-linear-gradient(45deg, #f8f8f8, #f8f8f8),
+    -o-linear-gradient(135deg, #f8f8f8, #f8f8f8),
+    -o-linear-gradient(225deg, transparent 10px, #f8f8f8 10px);
+  background: linear-gradient(225deg, transparent 50%, #c9ccd4 50%),
+    linear-gradient(45deg, #f8f8f8, #f8f8f8),
+    linear-gradient(135deg, #f8f8f8, #f8f8f8),
+    linear-gradient(225deg, transparent 10px, #f8f8f8 10px);
+}
+
+.fold-corner-card {
+  -webkit-background-size: 15px 15px, 0 0, 0 0, 100% 100%;
+  -moz-background-size: 15px 15px, 0 0, 0 0, 100% 100%;
+  background-size: 15px 15px, 0 0, 0 0, 100% 100%;
+  background-position: 100% 0, 0 0, 100% 100%, 100% 0;
+  background-repeat: no-repeat;
+}
+
+.star-checked {
+  display: none;
+}
+
+.star-wrapper.hover > .star {
+  display: none;
+}
+
+.star-wrapper.hover > .star-checked {
+  display: block;
+}
+
+@layer utilities {
+  input[type="number"]::-webkit-inner-spin-button,
+  input[type="number"]::-webkit-outer-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
   }
-  body {
-    color: white;
-    background: black;
-  }
+}
+
+select::-ms-expand {
+  display: none;
+}
+select {
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  text-indent: 1px;
+  text-overflow: '';
 }
