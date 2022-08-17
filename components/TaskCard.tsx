@@ -28,7 +28,7 @@ const TaskCard: React.FC<TaskCardProps> = ({
 }) => {
   const iconType = {
     bookmark: (
-      <button className="hover:bg-grey-500 bg-gray-200 -mt-1 -mr-1 top-0 right-0 absolute w-14 h-14 border-black border-t-2 border-x-2 border-b-4 rounded-lg text-center">
+      <button className="hover:bg-grey-500 bg-white -mt-1 -mr-1 top-0 right-0 absolute w-14 h-14 border-black border-t-2 border-x-2 border-b-4 rounded-lg text-center">
         <BookmarkIcon className="position-center h-8 w-8" aria-hidden="true" />
       </button>
     ),

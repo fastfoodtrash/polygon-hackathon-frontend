@@ -1,28 +1,85 @@
-import { useState } from 'react';
 import type { NextPage } from "next";
+
+import type { Web3ReactHooks } from "@web3-react/core";
+import { initializeConnector } from "@web3-react/core";
+import { MetaMask } from "@web3-react/metamask";
+
+import dynamic from "next/dynamic";
+
+import { useState } from "react";
 import Head from "next/head";
-import { PlusSmIcon } from '@heroicons/react/solid';
-import { BookmarkIcon } from '@heroicons/react/outline';
+import { PlusSmIcon } from "@heroicons/react/solid";
+import { BookmarkIcon } from "@heroicons/react/outline";
 
-import NavBar from '../components/NavBar';
-import Header from '../components/Header';
-import MenuButton from '../components/MenuButton';
-import TabBar from '../components/TabBar';
-import TaskCard from '../components/TaskCard';
-import TaskPopup from '../components/TaskPopup';
-import AddTaskPopup from '../components/AddTaskPopup';
-import NamecardPopup from '../components/NamePopup';
-import FriendPopup from '../components/FriendPopup';
+import NavBar from "../components/NavBar";
+import Header from "../components/Header";
+import MenuButton from "../components/MenuButton";
+import TabBar from "../components/TabBar";
+import TaskCard from "../components/TaskCard";
+import TaskPopup from "../components/TaskPopup";
+import AddTaskPopup from "../components/AddTaskPopup";
+import NamecardPopup from "../components/NamePopup";
+import FriendPopup from "../components/FriendPopup";
 
-import { jobTypes, sampleData } from '../data/options';
+import { jobTypes, sampleData } from "../data/options";
 
-const Home: NextPage = () => {
-  const [filter, setFilter] = useState('All');
+const [metaMask, hooks] = initializeConnector<MetaMask>(
+  (actions) => new MetaMask(actions)
+);
+
+const {
+  useChainId,
+  useAccounts,
+  useError,
+  useIsActivating,
+  useIsActive,
+  useProvider,
+  useENSNames,
+} = hooks;
+
+const JobPage: NextPage = () => {
+  const [search, setSearch] = useState('');
+
+  const [filter, setFilter] = useState("All");
   const [taskOpen, setTaskOpen] = useState(false);
   const [namecardOpen, setNamecardOpen] = useState(false);
+  const [nameCardType, setNamecardType] = useState('resume');
   const [friendOpen, setFriendOpen] = useState(false);
   const [addTaskOpen, setAddTaskOpen] = useState(false);
 
+  const chainId = useChainId();
+  const accounts = useAccounts();
+  const error = useError();
+  const isActivating = useIsActivating();
+
+  const isActive = useIsActive();
+
+  const provider = useProvider();
+  const ENSNames = useENSNames(provider);
+
+  const connectWallet = (connect: boolean) => {
+    if (connect) {
+      metaMask.activate();
+    } else {
+      metaMask.deactivate();
+    }
+  };
+  const navigate = (type: string) => {
+    switch(type) {
+      case 'tasks':
+        break;
+      case 'resume':
+        setNamecardType('resume');
+        setNamecardOpen(true);
+        break;
+      case 'friend':
+        setFriendOpen(true);
+        break;
+      case 'submitTask':
+        setAddTaskOpen(true);
+        break;
+    }
+  };
   return (
     <div>
       <Head>
@@ -34,13 +91,20 @@ const Home: NextPage = () => {
       <div className="App">
         <TaskPopup open={taskOpen} setOpen={setTaskOpen} />
         <NamecardPopup
-          type="resume"
+          type={nameCardType}
           open={namecardOpen}
           setOpen={setNamecardOpen}
         />
         <FriendPopup open={friendOpen} setOpen={setFriendOpen} />
         <AddTaskPopup open={addTaskOpen} setOpen={setAddTaskOpen} />
-        <NavBar />
+        <NavBar
+          connect={() => connectWallet(true)}
+          disconnect={() => connectWallet(false)}
+          hooks={hooks}
+          searchVal={search}
+          onSearch={(newVal) => setSearch(newVal)}
+          navigate={(type: string) => navigate(type)}
+        />
         <div className="max-w-7xl mx-auto px-2 sm:px-4 lg:divide-y lg:divide-gray-200 lg:px-8">
           <div className="mt-6 grid grid-cols-1 gap-y-6 sm:grid-cols-12 sm:grid-rows-3 sm:gap-x-6 lg:gap-8">
             <div className="group row-span-3 col-span-12 lg:col-span-9  aspect-w-2 aspect-h-1 rounded-lg overflow-hidden sm:aspect-h-1 sm:aspect-w-1">
@@ -130,4 +194,4 @@ const Home: NextPage = () => {
   );
 };
 
-export default Home;
+export default JobPage;
