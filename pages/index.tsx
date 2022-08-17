@@ -1,18 +1,16 @@
 import type { NextPage } from "next";
 
-import type { Web3ReactHooks } from "@web3-react/core";
 import { initializeConnector } from "@web3-react/core";
 import { MetaMask } from "@web3-react/metamask";
 
-import dynamic from "next/dynamic";
-
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Head from "next/head";
 import { PlusSmIcon } from "@heroicons/react/solid";
 import { BookmarkIcon } from "@heroicons/react/outline";
 
 import NavBar from "../components/NavBar";
 import Header from "../components/Header";
+import ConnectHeader from "../components/ConnectHeader";
 import MenuButton from "../components/MenuButton";
 import TabBar from "../components/TabBar";
 import TaskCard from "../components/TaskCard";
@@ -38,24 +36,19 @@ const {
 } = hooks;
 
 const JobPage: NextPage = () => {
-  const [search, setSearch] = useState('');
+  const [search, setSearch] = useState("");
+  const [login, setLogin] = useState(false);
 
   const [filter, setFilter] = useState("All");
   const [taskOpen, setTaskOpen] = useState(false);
   const [namecardOpen, setNamecardOpen] = useState(false);
-  const [nameCardType, setNamecardType] = useState('resume');
+  const [nameCardType, setNamecardType] = useState<"resume" | "namecard">(
+    "resume"
+  );
   const [friendOpen, setFriendOpen] = useState(false);
   const [addTaskOpen, setAddTaskOpen] = useState(false);
 
-  const chainId = useChainId();
-  const accounts = useAccounts();
-  const error = useError();
-  const isActivating = useIsActivating();
-
   const isActive = useIsActive();
-
-  const provider = useProvider();
-  const ENSNames = useENSNames(provider);
 
   const connectWallet = (connect: boolean) => {
     if (connect) {
@@ -65,21 +58,25 @@ const JobPage: NextPage = () => {
     }
   };
   const navigate = (type: string) => {
-    switch(type) {
-      case 'tasks':
+    switch (type) {
+      case "tasks":
         break;
-      case 'resume':
-        setNamecardType('resume');
+      case "resume":
+        setNamecardType("resume");
         setNamecardOpen(true);
         break;
-      case 'friend':
+      case "friend":
         setFriendOpen(true);
         break;
-      case 'submitTask':
+      case "submitTask":
         setAddTaskOpen(true);
         break;
     }
   };
+
+  useEffect(() => {
+    setLogin(isActive);
+  }, [isActive]);
   return (
     <div>
       <Head>
@@ -107,32 +104,40 @@ const JobPage: NextPage = () => {
         />
         <div className="max-w-7xl mx-auto px-2 sm:px-4 lg:divide-y lg:divide-gray-200 lg:px-8">
           <div className="mt-6 grid grid-cols-1 gap-y-6 sm:grid-cols-12 sm:grid-rows-3 sm:gap-x-6 lg:gap-8">
-            <div className="group row-span-3 col-span-12 lg:col-span-9  aspect-w-2 aspect-h-1 rounded-lg overflow-hidden sm:aspect-h-1 sm:aspect-w-1">
-              <Header />
-            </div>
-            <div className="group aspect-w-2 aspect-h-1 col-span-12 sm:col-span-4 lg:col-span-3 rounded-lg overflow-hidden sm:relative sm:aspect-none sm:h-full">
-              <MenuButton
-                icon="task"
-                name="My Tasks"
-                subText="Tasks dashboard"
-                noti={2}
-              />
-            </div>
-            <div className="group aspect-w-2 aspect-h-1 col-span-12 sm:col-span-4 lg:col-span-3 rounded-lg overflow-hidden sm:relative sm:aspect-none sm:h-full">
-              <MenuButton
-                icon="resume"
-                name="DeSume"
-                subText="View my desume"
-              />
-            </div>
-            <div className="group aspect-w-2 aspect-h-1 col-span-12 sm:col-span-4 lg:col-span-3 rounded-lg overflow-hidden sm:relative sm:aspect-none sm:h-full">
-              <MenuButton
-                icon="connect"
-                name="Connect"
-                subText="View my connection"
-                noti={2}
-              />
-            </div>
+            {login ? (
+              <>
+                <div className="group row-span-3 col-span-12 lg:col-span-9  aspect-w-2 aspect-h-1 rounded-lg overflow-hidden sm:aspect-h-1 sm:aspect-w-1">
+                  <Header />
+                </div>
+                <div className="group aspect-w-2 aspect-h-1 col-span-12 sm:col-span-4 lg:col-span-3 rounded-lg overflow-hidden sm:relative sm:aspect-none sm:h-full">
+                  <MenuButton
+                    icon="task"
+                    name="My Tasks"
+                    subText="Tasks dashboard"
+                    noti={2}
+                  />
+                </div>
+                <div className="group aspect-w-2 aspect-h-1 col-span-12 sm:col-span-4 lg:col-span-3 rounded-lg overflow-hidden sm:relative sm:aspect-none sm:h-full">
+                  <MenuButton
+                    icon="resume"
+                    name="DeSume"
+                    subText="View my desume"
+                  />
+                </div>
+                <div className="group aspect-w-2 aspect-h-1 col-span-12 sm:col-span-4 lg:col-span-3 rounded-lg overflow-hidden sm:relative sm:aspect-none sm:h-full">
+                  <MenuButton
+                    icon="connect"
+                    name="Connect"
+                    subText="View my connection"
+                    noti={2}
+                  />
+                </div>
+              </>
+            ) : (
+              <div className="group row-span-3 col-span-12 aspect-w-2 aspect-h-1 rounded-lg overflow-hidden">
+                <ConnectHeader connect={() => connectWallet(true)} />
+              </div>
+            )}
           </div>
 
           <div

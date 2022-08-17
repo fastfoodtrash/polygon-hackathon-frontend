@@ -8,7 +8,7 @@ import { BellIcon, MenuIcon, XIcon } from "@heroicons/react/outline";
 
 import { get } from "lodash";
 import { BigNumber } from "@ethersproject/bignumber";
-import { formatEther } from '@ethersproject/units';
+import { formatEther } from "@ethersproject/units";
 
 const useBalances = (
   provider?: ReturnType<Web3ReactHooks["useProvider"]>,
@@ -62,10 +62,9 @@ const NavBar = ({
     useProvider,
     useENSNames,
   } = hooks;
-
-  const chainId = useChainId();
+  const [user, setUser] = useState({ name: "", wallet: "" });
+  const [login, setLogin] = useState(false);
   const accounts = useAccounts();
-  const error = useError();
   const isActivating = useIsActivating();
 
   const isActive = useIsActive();
@@ -75,10 +74,16 @@ const NavBar = ({
 
   const balances = useBalances(provider, accounts);
 
-  const user = {
-    name: get(ENSNames, "[0]", get(accounts, "[0]", "Address Invalid")),
-    wallet: `Ξ ${formatEther(get(balances, "[0]", 0))}`,
-  };
+  useEffect(() => {
+    setUser({
+      name: get(ENSNames, "[0]", get(accounts, "[0]", "Address Invalid")),
+      wallet: `Ξ ${formatEther(get(balances, "[0]", 0))}`,
+    });
+  }, [ENSNames, accounts, balances]);
+
+  useEffect(() => {
+    setLogin(isActive);
+  }, [isActive]);
 
   const userNavigation = [
     {
@@ -153,7 +158,7 @@ const NavBar = ({
               </div>
               <div className="hidden lg:relative lg:z-10 lg:ml-4 lg:flex lg:items-center">
                 {/* Profile dropdown */}
-                {isActive ? (
+                {login ? (
                   <>
                     <button
                       onClick={() => navigate("submitTask")}
@@ -166,7 +171,9 @@ const NavBar = ({
                         <Menu.Button className="bg-white rounded-full flex">
                           <span className="sr-only">Open user menu</span>
                           <div className="text-center font-bold text-2xl h-10 w-10 rounded-full border-x-2 border-t-2 border-b-4 border-black">
-                            {(user.name ? user.name : "A").charAt(0).toUpperCase()}
+                            {(user.name ? user.name : "A")
+                              .charAt(0)
+                              .toUpperCase()}
                           </div>
                         </Menu.Button>
                       </div>
@@ -235,7 +242,7 @@ const NavBar = ({
 
           <Disclosure.Panel as="nav" className="lg:hidden" aria-label="Global">
             <div className="border-t-2 border-black pt-4 pb-3">
-              {isActive && (
+              {login && (
                 <div className="px-4 flex items-center">
                   <div className="flex-shrink-0">
                     <div className="text-center font-bold text-2xl h-10 w-10 rounded-full border-x-2 border-t-2 border-b-4 border-black">
@@ -261,8 +268,8 @@ const NavBar = ({
                   </button>
                 </div>
               )}
-              <div className={`px-2 space-y-1 ${isActive ? "mt-3" : "mt-0"}`}>
-                {!isActive ? (
+              <div className={`px-2 space-y-1 ${login ? "mt-3" : "mt-0"}`}>
+                {!login ? (
                   <Disclosure.Button
                     as="a"
                     className="cursor-pointer ease-in duration-300 block rounded-md py-2 px-3 text-base font-medium text-black hover:bg-gray-50 hover:text-gray-900"
@@ -297,7 +304,7 @@ const NavBar = ({
                     </div>
                   </Disclosure.Button>
                 )}
-                {isActive &&
+                {login &&
                   userNavigation.map((item) => (
                     <Disclosure.Button
                       key={item.name}
