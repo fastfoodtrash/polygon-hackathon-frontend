@@ -7,6 +7,7 @@ import { useEffect, useState } from "react";
 import Head from "next/head";
 import { PlusSmIcon } from "@heroicons/react/solid";
 import { BookmarkIcon } from "@heroicons/react/outline";
+import { BookmarkIcon as BookmarkCheckedIcon } from "@heroicons/react/solid";
 
 import NavBar from "../components/NavBar";
 import Header from "../components/Header";
@@ -25,21 +26,14 @@ const [metaMask, hooks] = initializeConnector<MetaMask>(
   (actions) => new MetaMask(actions)
 );
 
-const {
-  useChainId,
-  useAccounts,
-  useError,
-  useIsActivating,
-  useIsActive,
-  useProvider,
-  useENSNames,
-} = hooks;
+const { useIsActive } = hooks;
 
 const JobPage: NextPage = () => {
   const [search, setSearch] = useState("");
   const [login, setLogin] = useState(false);
 
   const [filter, setFilter] = useState("All");
+  const [bookmark, setBookmark] = useState(false);
   const [taskOpen, setTaskOpen] = useState(false);
   const [namecardOpen, setNamecardOpen] = useState(false);
   const [nameCardType, setNamecardType] = useState<"resume" | "namecard">(
@@ -107,21 +101,27 @@ const JobPage: NextPage = () => {
             {login ? (
               <>
                 <div className="group row-span-3 col-span-12 lg:col-span-9  aspect-w-2 aspect-h-1 rounded-lg overflow-hidden sm:aspect-h-1 sm:aspect-w-1">
-                  <Header />
+                  <Header
+                    hooks={hooks}
+                    disconnect={() => connectWallet(false)}
+                    navigate={(type: string) => navigate(type)}
+                  />
                 </div>
                 <div className="group aspect-w-2 aspect-h-1 col-span-12 sm:col-span-4 lg:col-span-3 rounded-lg overflow-hidden sm:relative sm:aspect-none sm:h-full">
                   <MenuButton
                     icon="task"
                     name="My Tasks"
                     subText="Tasks dashboard"
-                    noti={2}
+                    noti={1}
+                    onClick={() => navigate("tasks")}
                   />
                 </div>
                 <div className="group aspect-w-2 aspect-h-1 col-span-12 sm:col-span-4 lg:col-span-3 rounded-lg overflow-hidden sm:relative sm:aspect-none sm:h-full">
                   <MenuButton
                     icon="resume"
                     name="DeSume"
-                    subText="View my desume"
+                    subText="View my resume"
+                    onClick={() => navigate("resume")}
                   />
                 </div>
                 <div className="group aspect-w-2 aspect-h-1 col-span-12 sm:col-span-4 lg:col-span-3 rounded-lg overflow-hidden sm:relative sm:aspect-none sm:h-full">
@@ -129,7 +129,8 @@ const JobPage: NextPage = () => {
                     icon="connect"
                     name="Connect"
                     subText="View my connection"
-                    noti={2}
+                    noti={1}
+                    onClick={() => navigate("friend")}
                   />
                 </div>
               </>
@@ -151,7 +152,10 @@ const JobPage: NextPage = () => {
               <div className="text-left">
                 <h2 className="text-2xl tracking-tight font-bold text-gray-900 sm:text-4xl">
                   Active Jobs
-                  <button className="mt-1 align-top relative ml-4 w-8 h-8 border-black border-t-2 border-x-2 border-b-4 rounded-full text-center">
+                  <button
+                    onClick={() => navigate("submitTask")}
+                    className="mt-1 align-top relative ml-4 w-8 h-8 border-black border-t-2 border-x-2 border-b-4 rounded-full text-center"
+                  >
                     <PlusSmIcon
                       className="position-center h-8 w-8"
                       aria-hidden="true"
@@ -167,10 +171,16 @@ const JobPage: NextPage = () => {
                     />
                   </div>
                   <div className="ml-auto flex-shrink-0 text-black pl-12">
-                    <button className="mt-1 align-top relative ml-4 w-12 h-12 border-black border-t-2 border-x-2 border-b-4 rounded-full text-center">
+                    <button
+                      onClick={() => setBookmark(!bookmark)}
+                      className={`ease-in duration-100 mt-1 align-top relative ml-4 w-12 h-12 border-black border-t-2 border-x-2 border-b-4 rounded-full text-center ${
+                        bookmark && "bg-black"
+                      }`}
+                    >
                       <BookmarkIcon
                         className="position-center h-8 w-8"
                         aria-hidden="true"
+                        color={bookmark ? "white" : "black"}
                       />
                     </button>
                   </div>

@@ -89,7 +89,7 @@ const NavBar = ({
     {
       name: "My Tasks",
       subText: "Tasks dashboard",
-      noti: 2,
+      noti: 1,
       onClick: () => navigate("tasks"),
     },
     {
@@ -207,7 +207,7 @@ const NavBar = ({
                                       </div>
                                     )}
                                   </div>
-                                  {item.noti && (
+                                  {/* {item.noti && (
                                     <button
                                       type="button"
                                       className="ease-in duration-300 ml-auto flex-shrink-0 bg-white rounded-full p-1 text-black hover:text-gray-500"
@@ -219,7 +219,7 @@ const NavBar = ({
                                         2
                                       </div>
                                     </button>
-                                  )}
+                                  )} */}
                                 </div>
                               )}
                             </Menu.Item>
@@ -325,7 +325,7 @@ const NavBar = ({
                             </div>
                           )}
                         </div>
-                        {item.noti && (
+                        {/* {item.noti && (
                           <button
                             type="button"
                             className="ease-in duration-300 ml-auto flex-shrink-0 bg-white rounded-full p-1 text-black hover:text-gray-500"
@@ -335,7 +335,7 @@ const NavBar = ({
                               2
                             </div>
                           </button>
-                        )}
+                        )} */}
                       </div>
                     </Disclosure.Button>
                   ))}
