@@ -1,12 +1,18 @@
-import React from 'react';
-import moment from 'moment';
-import { get } from 'lodash';
-import { BookmarkIcon, CalendarIcon, UserIcon, CheckIcon, XIcon } from '@heroicons/react/outline';
+import React from "react";
+import moment from "moment";
+import { get } from "lodash";
+import {
+  BookmarkIcon,
+  CalendarIcon,
+  UserIcon,
+  CheckIcon,
+  XIcon,
+} from "@heroicons/react/outline";
 
-import { jobTypes } from '../data/options';
+import { jobTypes } from "../data/options";
 
 interface TaskCardProps {
-  type: 'bookmark' | 'bookmarked' | 'finished' | 'failed';
+  type: "bookmark" | "bookmarked" | "finished" | "failed";
   createDate: number;
   jobType: string;
   jobName: string;
@@ -14,6 +20,7 @@ interface TaskCardProps {
   userBookmarked: number;
   slack: string;
   onClick: () => void;
+  onBookmark?: (bookmark: boolean) => void;
 }
 
 const TaskCard: React.FC<TaskCardProps> = ({
@@ -25,16 +32,26 @@ const TaskCard: React.FC<TaskCardProps> = ({
   userBookmarked,
   slack,
   onClick,
+  onBookmark,
 }) => {
   const iconType = {
     bookmark: (
       <button className="hover:bg-grey-500 bg-white -mt-1 -mr-1 top-0 right-0 absolute w-14 h-14 border-black border-t-2 border-x-2 border-b-4 rounded-lg text-center">
-        <BookmarkIcon className="position-center h-8 w-8" aria-hidden="true" />
+        <BookmarkIcon
+          onClick={onBookmark && (() => onBookmark(true))}
+          className="position-center h-8 w-8"
+          aria-hidden="true"
+        />
       </button>
     ),
     bookmarked: (
-      <button className="hover:bg-grey-500 bg-white -mt-1 -mr-1 top-0 right-0 absolute w-14 h-14 border-black border-t-2 border-x-2 border-b-4 rounded-lg text-center">
-        <BookmarkIcon className="position-center h-8 w-8" aria-hidden="true" />
+      <button className="hover:bg-grey-500 bg-black -mt-1 -mr-1 top-0 right-0 absolute w-14 h-14 border-black border-t-2 border-x-2 border-b-4 rounded-lg text-center">
+        <BookmarkIcon
+          color="white"
+          onClick={onBookmark && (() => onBookmark(false))}
+          className="position-center h-8 w-8"
+          aria-hidden="true"
+        />
       </button>
     ),
     finished: (
@@ -49,11 +66,11 @@ const TaskCard: React.FC<TaskCardProps> = ({
     ),
   };
   const colorMap = {
-    yellow: '#FBBF16',
-    'light-yellow': '#F9F8CB',
-    green: '#00C6AD',
-    red: '#F85A2A',
-    white: '#FFF',
+    yellow: "#FBBF16",
+    "light-yellow": "#F9F8CB",
+    green: "#00C6AD",
+    red: "#F85A2A",
+    white: "#FFF",
   };
   const jobFormat = jobTypes.find((item: any) => item.name === jobType);
   return (
@@ -62,7 +79,7 @@ const TaskCard: React.FC<TaskCardProps> = ({
         <div
           className={`relative h-48 w-full border-b-2 border-black p-6`}
           style={{
-            backgroundColor: get(colorMap, `[${jobFormat?.color}]`, 'white'),
+            backgroundColor: get(colorMap, `[${jobFormat?.color}]`, "white"),
           }}
         >
           {iconType[type]}
@@ -72,7 +89,7 @@ const TaskCard: React.FC<TaskCardProps> = ({
               aria-hidden="true"
             />
             <span className="font-bold text-xl inline-block align-middle ml-2 mt-1">
-              {moment.unix(createDate).format('DD/MM')}
+              {moment.unix(createDate).format("DD/MM")}
             </span>
           </p>
           <div className="absolute bottom-0 left-0 w-full px-6 py-6 max-h-24 font-bold text-2xl">
@@ -88,20 +105,20 @@ const TaskCard: React.FC<TaskCardProps> = ({
               aria-hidden="true"
             />
             <span className="text-lg inline-block align-middle ml-2">
-              {userView.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',')}
+              {userView.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",")}
             </span>
             <BookmarkIcon
               className="h-6 w-6 text-black inline-block align-middle ml-8"
               aria-hidden="true"
             />
             <span className="text-lg inline-block align-middle ml-2">
-              {userBookmarked.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',')}
+              {userBookmarked.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",")}
             </span>
           </div>
           <div className="col-span-1 row-span-2 relative">
             <div className="ml-auto relative w-24 h-24 rounded-full border-black border-t-2 border-x-2 border-b-4 text-center">
               <img
-                src={`/assets/stack/${slack}.png`}
+                src={`/assets/stack/stack_${slack}.png`}
                 className="position-center w-4/5"
                 alt="Slack Icon"
               />
