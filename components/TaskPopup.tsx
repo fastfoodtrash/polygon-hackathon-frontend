@@ -30,7 +30,7 @@ const TaskPopup: React.FC<TaskPopupProps> = ({ open, setOpen }) => {
   const cancelButtonRef = useRef(null);
   const userView = 1234;
   const userBookmarked = 1234;
-  const solCost = 1000;
+  const polyCost = 1000;
   const stackList = ['React JS', 'Node JS', 'MongoDB'];
   const jobDescription =
     'Coins.ph is on a mission to create an open financial system by providing everyone easy access to Web3 and digital assets. A regulated entity, Coins is the most established crypto brand in the Philippines and has gained the trust of more than 16 million users. Through the easy-to-use mobile app, users can buy and sell a variety of different cryptocurrencies and also access a wide range of payment services.';
@@ -143,13 +143,13 @@ const TaskPopup: React.FC<TaskPopupProps> = ({ open, setOpen }) => {
                               .replace(/\B(?=(\d{3})+(?!\d))/g, ',')}
                           </span>
                           <img
-                            src="/assets/icon/sol.svg"
+                            src="/assets/icon/polygon.svg"
                             className="h-6 w-6 text-black inline-block align-middle ml-8"
                             aria-hidden="true"
-                            alt="sol icon"
+                            alt="polygon icon"
                           />
                           <span className="text-lg inline-block align-middle ml-2">
-                            {solCost
+                            {polyCost
                               .toString()
                               .replace(/\B(?=(\d{3})+(?!\d))/g, ',')}
                           </span>

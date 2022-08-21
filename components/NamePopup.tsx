@@ -78,7 +78,7 @@ const NamecardPopup: React.FC<NamecardPopupProps> = ({
                       <div className="py-12 px-4 sm:pt-16 sm:px-12 lg:pr-0 col-span-3 my-auto">
                         <div className="lg:self-center">
                           <h2 className="text-5xl font-extrabold text-black">
-                            <span className="block">Solpeeps</span>
+                            <span className="block">Polypeeps</span>
                           </h2>
                           <p className="text-xl leading-6 text-black mt-4 font-medium">
                             <DocumentTextIcon
@@ -96,12 +96,12 @@ const NamecardPopup: React.FC<NamecardPopupProps> = ({
                           </p>
                           <p className="text-xl leading-6 text-black mt-4 font-medium">
                             <img
-                              src="/assets/icon/sol.svg"
-                              alt="sol icon"
+                              src="/assets/icon/polygon.svg"
+                              alt="polygon icon"
                               className="inline-block h-7 w-7 align-middle"
                               aria-hidden="true"
                             />{' '}
-                            250 Solana Earned
+                            250 Polygon Earned
                           </p>
                         </div>
                       </div>

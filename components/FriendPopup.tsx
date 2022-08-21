@@ -70,7 +70,7 @@ const FriendPopup: React.FC<FriendPopupProps> = ({ open, setOpen }) => {
                     <div className="pt-10 pb-8 px-4 sm:pt-16 sm:px-16 lg:py-10 lg:pr-0 xl:py-8 col-span-4 my-auto">
                       <div className="lg:self-center">
                         <h2 className="font-extrabold text-black text-6xl">
-                          <span className="block">Solpeeps</span>
+                          <span className="block">Polypeeps</span>
                         </h2>
                       </div>
                     </div>
@@ -86,7 +86,7 @@ const FriendPopup: React.FC<FriendPopupProps> = ({ open, setOpen }) => {
                     <div className="flex border-black border-t-2 border-x-2 border-b-4 rounded-lg mt-2 pl-4 pr-2 py-2">
                       <input
                         type="text"
-                        placeholder="Solana Address"
+                        placeholder="Polygon Address"
                         className="focus:outline-none text-sm w-full placeholder:text-black placeholder:font-medium"
                       />
                       <button className="font-medium py-1 px-2 bg-yellow rounded-lg border-black border-x-2 border-t-2 border-b-4">
