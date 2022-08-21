@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useMemo, useEffect, useState } from "react";
 import type { NextPage } from "next";
 
 import { initializeConnector } from "@web3-react/core";
@@ -37,6 +37,7 @@ const JobPage: NextPage = () => {
 
   const [filter, setFilter] = useState("All");
   const [bookmark, setBookmark] = useState(false);
+  const [all, setAll] = useState(false);
   const [taskOpen, setTaskOpen] = useState(false);
   const [namecardOpen, setNamecardOpen] = useState(false);
   const [nameCardType, setNamecardType] = useState<"resume" | "namecard">(
@@ -71,6 +72,7 @@ const JobPage: NextPage = () => {
   const navigate = (type: string) => {
     switch (type) {
       case "tasks":
+        setAll(false);
         break;
       case "resume":
         setNamecardType("resume");
@@ -89,22 +91,60 @@ const JobPage: NextPage = () => {
     setLogin(isActive);
   }, [isActive]);
 
-  const updateBookmark = (PK: string, bookmark: boolean) => {
+  const updateBookmark = async (PK: string, bookmark: boolean) => {
     const tempData = Object.assign([], data);
     const index = tempData.findIndex((item: any) => item.PK === PK);
     let tempBookmark = get(tempData, `[${index}].bookmark`, []);
     if (bookmark) {
       tempBookmark.push(get(accounts, "[0]", ""));
     } else {
-      tempBookmark = tempBookmark.filter((item: string) => item !== get(accounts, "[0]", ""));
+      tempBookmark = tempBookmark.filter(
+        (item: string) => item !== get(accounts, "[0]", "")
+      );
     }
-    set(
-      tempData,
-      `[${index}].bookmark`,
-      tempBookmark
-    );
+    set(tempData, `[${index}].bookmark`, tempBookmark);
     setData(tempData);
+    const response = await axios(
+      "https://liwaiw1kuj.execute-api.ap-southeast-1.amazonaws.com"
+    ).put("/tasks/bookmark", {
+      PK,
+      wallet: get(accounts, "[0]", ""),
+      bookmark,
+    });
   };
+
+  const filterData = useMemo(() => {
+    const wallet = get(accounts, "[0]", "");
+    let tempData = Object.assign([], data);
+    if (all) {
+      tempData = tempData.filter(
+        (item: any) => get(item, "wallet", "") !== wallet
+      );
+      if (bookmark) {
+        tempData = tempData.filter((item: any) =>
+          get(item, "bookmark", []).includes(wallet)
+        );
+      }
+      if (filter !== "All") {
+        tempData = tempData.filter(
+          (item: any) => get(item, "jobType.value", "") === filter
+        );
+      }
+    } else {
+      tempData = tempData.filter(
+        (item: any) =>
+          get(item, "wallet", "") === wallet ||
+          get(item, "apply", []).includes(wallet)
+      );
+    }
+    if (search) {
+      tempData = tempData.filter((item: any) =>
+        get(item, "postName", "").toLowerCase().includes(search.toLowerCase())
+      );
+    }
+    return tempData;
+  }, [data, bookmark, all, accounts, filter, search]);
+
   return (
     <div>
       <Head>
@@ -136,51 +176,127 @@ const JobPage: NextPage = () => {
           onSearch={(newVal) => setSearch(newVal)}
           navigate={(type: string) => navigate(type)}
         />
-        <div className="max-w-7xl mx-auto px-2 sm:px-4 lg:divide-y lg:divide-gray-200 lg:px-8">
-          <div className="mt-6 grid grid-cols-1 gap-y-6 sm:grid-cols-12 sm:grid-rows-3 sm:gap-x-6 lg:gap-8">
-            {login ? (
-              <>
-                <div className="group row-span-3 col-span-12 lg:col-span-9  aspect-w-2 aspect-h-1 rounded-lg overflow-hidden sm:aspect-h-1 sm:aspect-w-1">
-                  <Header
-                    hooks={hooks}
-                    disconnect={() => connectWallet(false)}
-                    navigate={(type: string) => navigate(type)}
-                  />
+        {all ? (
+          <div className="max-w-7xl mx-auto px-2 sm:px-4 lg:divide-y lg:divide-gray-200 lg:px-8">
+            <div className="mt-6 grid grid-cols-1 gap-y-6 sm:grid-cols-12 sm:grid-rows-3 sm:gap-x-6 lg:gap-8">
+              {login ? (
+                <>
+                  <div className="group row-span-3 col-span-12 lg:col-span-9  aspect-w-2 aspect-h-1 rounded-lg overflow-hidden sm:aspect-h-1 sm:aspect-w-1">
+                    <Header
+                      hooks={hooks}
+                      disconnect={() => connectWallet(false)}
+                      navigate={(type: string) => navigate(type)}
+                    />
+                  </div>
+                  <div className="group aspect-w-2 aspect-h-1 col-span-12 sm:col-span-4 lg:col-span-3 rounded-lg overflow-hidden sm:relative sm:aspect-none sm:h-full">
+                    <MenuButton
+                      icon="task"
+                      name="My Tasks"
+                      subText="Tasks dashboard"
+                      noti={1}
+                      onClick={() => navigate("tasks")}
+                    />
+                  </div>
+                  <div className="group aspect-w-2 aspect-h-1 col-span-12 sm:col-span-4 lg:col-span-3 rounded-lg overflow-hidden sm:relative sm:aspect-none sm:h-full">
+                    <MenuButton
+                      icon="resume"
+                      name="DeSume"
+                      subText="View my resume"
+                      onClick={() => navigate("resume")}
+                    />
+                  </div>
+                  <div className="group aspect-w-2 aspect-h-1 col-span-12 sm:col-span-4 lg:col-span-3 rounded-lg overflow-hidden sm:relative sm:aspect-none sm:h-full">
+                    <MenuButton
+                      icon="connect"
+                      name="Connect"
+                      subText="View my connection"
+                      noti={1}
+                      onClick={() => navigate("friend")}
+                    />
+                  </div>
+                </>
+              ) : (
+                <div className="group row-span-3 col-span-12 aspect-w-2 aspect-h-1 rounded-lg overflow-hidden">
+                  <ConnectHeader connect={() => connectWallet(true)} />
                 </div>
-                <div className="group aspect-w-2 aspect-h-1 col-span-12 sm:col-span-4 lg:col-span-3 rounded-lg overflow-hidden sm:relative sm:aspect-none sm:h-full">
-                  <MenuButton
-                    icon="task"
-                    name="My Tasks"
-                    subText="Tasks dashboard"
-                    noti={1}
-                    onClick={() => navigate("tasks")}
-                  />
-                </div>
-                <div className="group aspect-w-2 aspect-h-1 col-span-12 sm:col-span-4 lg:col-span-3 rounded-lg overflow-hidden sm:relative sm:aspect-none sm:h-full">
-                  <MenuButton
-                    icon="resume"
-                    name="DeSume"
-                    subText="View my resume"
-                    onClick={() => navigate("resume")}
-                  />
-                </div>
-                <div className="group aspect-w-2 aspect-h-1 col-span-12 sm:col-span-4 lg:col-span-3 rounded-lg overflow-hidden sm:relative sm:aspect-none sm:h-full">
-                  <MenuButton
-                    icon="connect"
-                    name="Connect"
-                    subText="View my connection"
-                    noti={1}
-                    onClick={() => navigate("friend")}
-                  />
-                </div>
-              </>
-            ) : (
-              <div className="group row-span-3 col-span-12 aspect-w-2 aspect-h-1 rounded-lg overflow-hidden">
-                <ConnectHeader connect={() => connectWallet(true)} />
-              </div>
-            )}
-          </div>
+              )}
+            </div>
 
+            <div
+              className="relative pt-10 pb-10 lg:pt-24 lg:pb-28"
+              style={{ borderTop: 0 }}
+            >
+              <div className="absolute inset-0">
+                <div className="bg-white h-1/3 sm:h-2/3" />
+              </div>
+              <div className="relative max-w-7xl mx-auto">
+                <div className="text-left">
+                  <h2 className="text-2xl tracking-tight font-bold text-gray-900 sm:text-4xl">
+                    Active Jobs
+                    <button
+                      onClick={() => navigate("submitTask")}
+                      className="mt-1 align-top relative ml-4 w-8 h-8 border-black border-t-2 border-x-2 border-b-4 rounded-full text-center"
+                    >
+                      <PlusSmIcon
+                        className="position-center h-8 w-8"
+                        aria-hidden="true"
+                      />
+                    </button>
+                  </h2>
+                  <div className="mt-3 flex items-center">
+                    <div className="flex-shrink-1">
+                      <TabBar
+                        nameList={jobTypes}
+                        value={filter}
+                        onChange={(newValue) => setFilter(newValue)}
+                      />
+                    </div>
+                    <div className="ml-auto flex-shrink-0 text-black pl-12">
+                      <button
+                        onClick={() => setBookmark(!bookmark)}
+                        className={`ease-in duration-100 mt-1 align-top relative ml-4 w-12 h-12 border-black border-t-2 border-x-2 border-b-4 rounded-full text-center ${
+                          bookmark && "bg-black"
+                        }`}
+                      >
+                        <BookmarkIcon
+                          className="position-center h-8 w-8"
+                          aria-hidden="true"
+                          color={bookmark ? "white" : "black"}
+                        />
+                      </button>
+                    </div>
+                  </div>
+                </div>
+                <div className="mt-12 mx-auto grid gap-5 sm:grid-cols-2 lg:grid-cols-3 lg:max-w-none">
+                  {filterData.map((item: any) => (
+                    <TaskCard
+                      key={get(item, "PK", "")}
+                      type={
+                        get(item, "bookmark", []).includes(
+                          get(accounts, "[0]", "")
+                        )
+                          ? "bookmarked"
+                          : "bookmark"
+                      }
+                      createDate={get(item, "createTime", 0)}
+                      jobName={get(item, "postName", "")}
+                      jobType={get(item, "jobType.value", "")}
+                      userBookmarked={get(item, "bookmark", []).length}
+                      userView={get(item, "apply", []).length}
+                      slack={get(item, "stacks", []).map((stack: any) =>
+                        get(stack, "value", "")
+                      )}
+                      onBookmark={(bookmark: boolean) =>
+                        updateBookmark(item.PK, bookmark)
+                      }
+                      onClick={() => setTaskOpen(true)}
+                    />
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+        ) : (
           <div
             className="relative pt-10 pb-10 lg:pt-24 lg:pb-28"
             style={{ borderTop: 0 }}
@@ -191,52 +307,20 @@ const JobPage: NextPage = () => {
             <div className="relative max-w-7xl mx-auto">
               <div className="text-left">
                 <h2 className="text-2xl tracking-tight font-bold text-gray-900 sm:text-4xl">
-                  Active Jobs
+                  My Tasks
                   <button
-                    onClick={() => navigate("submitTask")}
-                    className="mt-1 align-top relative ml-4 w-8 h-8 border-black border-t-2 border-x-2 border-b-4 rounded-full text-center"
+                    onClick={() => setAll(true)}
+                    className="mt-2 text-xl px-4 align-top relative ml-4 bg-black text-white rounded-full text-center"
                   >
-                    <PlusSmIcon
-                      className="position-center h-8 w-8"
-                      aria-hidden="true"
-                    />
+                    Home
                   </button>
                 </h2>
-                <div className="mt-3 flex items-center">
-                  <div className="flex-shrink-1">
-                    <TabBar
-                      nameList={jobTypes}
-                      value={filter}
-                      onChange={(newValue) => setFilter(newValue)}
-                    />
-                  </div>
-                  <div className="ml-auto flex-shrink-0 text-black pl-12">
-                    <button
-                      onClick={() => setBookmark(!bookmark)}
-                      className={`ease-in duration-100 mt-1 align-top relative ml-4 w-12 h-12 border-black border-t-2 border-x-2 border-b-4 rounded-full text-center ${
-                        bookmark && "bg-black"
-                      }`}
-                    >
-                      <BookmarkIcon
-                        className="position-center h-8 w-8"
-                        aria-hidden="true"
-                        color={bookmark ? "white" : "black"}
-                      />
-                    </button>
-                  </div>
-                </div>
               </div>
               <div className="mt-12 mx-auto grid gap-5 sm:grid-cols-2 lg:grid-cols-3 lg:max-w-none">
-                {data.map((item: any) => (
+                {filterData.map((item: any) => (
                   <TaskCard
                     key={get(item, "PK", "")}
-                    type={
-                      get(item, "bookmark", []).includes(
-                        get(accounts, "[0]", "")
-                      )
-                        ? "bookmarked"
-                        : "bookmark"
-                    }
+                    type={get(item, "status", "pending")}
                     createDate={get(item, "createTime", 0)}
                     jobName={get(item, "postName", "")}
                     jobType={get(item, "jobType.value", "")}
@@ -254,7 +338,7 @@ const JobPage: NextPage = () => {
               </div>
             </div>
           </div>
-        </div>
+        )}
       </div>
     </div>
   );

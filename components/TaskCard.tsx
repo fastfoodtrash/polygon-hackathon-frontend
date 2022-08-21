@@ -6,6 +6,7 @@ import {
   CalendarIcon,
   UserIcon,
   CheckIcon,
+  LightningBoltIcon,
   XIcon,
 } from "@heroicons/react/outline";
 
@@ -54,13 +55,18 @@ const TaskCard: React.FC<TaskCardProps> = ({
         />
       </button>
     ),
+    pending: (
+      <button className="cursor-default bg-light-yellow -mt-1 -mr-1 top-0 right-0 absolute w-14 h-14 border-black border-t-2 border-x-2 border-b-4 rounded-lg text-center">
+        <LightningBoltIcon className="position-center h-8 w-8" aria-hidden="true" />
+      </button>
+    ),
     finished: (
-      <button className="hover:bg-grey-500 bg-success -mt-1 -mr-1 top-0 right-0 absolute w-14 h-14 border-black border-t-2 border-x-2 border-b-4 rounded-lg text-center">
+      <button className="cursor-default hover:bg-grey-500 bg-success -mt-1 -mr-1 top-0 right-0 absolute w-14 h-14 border-black border-t-2 border-x-2 border-b-4 rounded-lg text-center">
         <CheckIcon className="position-center h-8 w-8" aria-hidden="true" />
       </button>
     ),
     failed: (
-      <button className="hover:bg-grey-500 bg-fail -mt-1 -mr-1 top-0 right-0 absolute w-14 h-14 border-black border-t-2 border-x-2 border-b-4 rounded-lg text-center">
+      <button className="cursor-default hover:bg-grey-500 bg-fail -mt-1 -mr-1 top-0 right-0 absolute w-14 h-14 border-black border-t-2 border-x-2 border-b-4 rounded-lg text-center">
         <XIcon className="position-center h-8 w-8" aria-hidden="true" />
       </button>
     ),
