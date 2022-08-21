@@ -52,7 +52,7 @@ export function AccountsComponent({
           : accounts?.map((account, i) => (
               <ul key={account} style={{ margin: 0, overflow: 'hidden', textOverflow: 'ellipsis' }}>
                 <li>{ENSNames?.[i] ?? account}</li>
-                <li>{balances?.[i] ? ` (Ξ${formatEther(balances[i])})` : null}</li>
+                <li>{balances?.[i] ? ` (${formatEther(balances[i])} Matic)` : null}</li>
               </ul>
             ))}
       </b>

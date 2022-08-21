@@ -7,7 +7,6 @@ import { useEffect, useState } from "react";
 import Head from "next/head";
 import { PlusSmIcon } from "@heroicons/react/solid";
 import { BookmarkIcon } from "@heroicons/react/outline";
-import { BookmarkIcon as BookmarkCheckedIcon } from "@heroicons/react/solid";
 
 import NavBar from "../components/NavBar";
 import Header from "../components/Header";
@@ -19,6 +18,7 @@ import TaskPopup from "../components/TaskPopup";
 import AddTaskPopup from "../components/AddTaskPopup";
 import NamecardPopup from "../components/NamePopup";
 import FriendPopup from "../components/FriendPopup";
+import LoadingBar from "../components/LoadingBar";
 
 import { jobTypes, sampleData } from "../data/options";
 
@@ -31,6 +31,7 @@ const { useIsActive } = hooks;
 const JobPage: NextPage = () => {
   const [search, setSearch] = useState("");
   const [login, setLogin] = useState(false);
+  const [loading, setLoading] = useState(false);
 
   const [filter, setFilter] = useState("All");
   const [bookmark, setBookmark] = useState(false);
@@ -80,6 +81,7 @@ const JobPage: NextPage = () => {
       </Head>
 
       <div className="App">
+        <LoadingBar open={loading} />
         <TaskPopup open={taskOpen} setOpen={setTaskOpen} />
         <NamecardPopup
           type={nameCardType}
@@ -87,7 +89,12 @@ const JobPage: NextPage = () => {
           setOpen={setNamecardOpen}
         />
         <FriendPopup open={friendOpen} setOpen={setFriendOpen} />
-        <AddTaskPopup open={addTaskOpen} setOpen={setAddTaskOpen} />
+        <AddTaskPopup
+          hooks={hooks}
+          open={addTaskOpen}
+          setOpen={setAddTaskOpen}
+          setLoading={setLoading}
+        />
         <NavBar
           connect={() => connectWallet(true)}
           disconnect={() => connectWallet(false)}

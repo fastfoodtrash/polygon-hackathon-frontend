@@ -1,33 +1,215 @@
-import { Fragment, useRef } from 'react';
-import { Dialog, Transition } from '@headlessui/react';
-import { XIcon } from '@heroicons/react/solid';
-import Select from 'react-select';
+import { Fragment, useEffect, useRef, useState } from "react";
+import type { Web3ReactHooks } from "@web3-react/core";
+import { Dialog, Transition } from "@headlessui/react";
+import { XIcon } from "@heroicons/react/solid";
+import Select, { MultiValue, SingleValue } from "react-select";
+import { BigNumber } from "@ethersproject/bignumber";
+import { formatEther, parseEther } from "@ethersproject/units";
+import { Contract } from "ethers";
+
+import { get, set } from "lodash";
+
+import { jobTypeOptions, stackTypeOptions } from "../data/options";
+import CONTRACT_ADDRESS from "../contract/service";
+import contractABI from "../contract/TasksV1.json";
+import axios from "../utils/service";
 
 interface AddTaskPopupProps {
   open: boolean;
+  hooks: Web3ReactHooks;
   setOpen: (value: boolean) => void;
+  setLoading: (newValue: boolean) => void;
 }
 
-const AddTaskPopup: React.FC<AddTaskPopupProps> = ({ open, setOpen }) => {
+const useBalances = (
+  provider?: ReturnType<Web3ReactHooks["useProvider"]>,
+  accounts?: string[]
+): BigNumber[] | undefined => {
+  const [balances, setBalances] = useState<BigNumber[] | undefined>();
+
+  useEffect(() => {
+    if (provider && accounts?.length) {
+      let stale = false;
+
+      void Promise.all(
+        accounts.map((account) => provider.getBalance(account))
+      ).then((balances) => {
+        if (!stale) {
+          setBalances(balances);
+        }
+      });
+
+      return () => {
+        stale = true;
+        setBalances(undefined);
+      };
+    }
+  }, [provider, accounts]);
+
+  return balances;
+};
+
+const AddTaskPopup: React.FC<AddTaskPopupProps> = ({
+  open,
+  setOpen,
+  hooks,
+  setLoading,
+}) => {
+  const { useProvider, useAccounts, useENSNames } = hooks;
+
+  const provider = useProvider();
+  const ENSNames = useENSNames(provider);
+  const accounts = useAccounts();
+
+  const balances = useBalances(provider, accounts);
+
+  const [user, setUser] = useState({ name: "", wallet: "" });
+  // const [salary, setSalary] = useState("0.01");
+  const [salary, setSalary] = useState("");
+  const [description, setDescription] = useState({});
+  // companyName: "Company Name",
+  // companyType: "Company Type",
+  // postName: "Post Name",
+  // jobDuration: "20",
+  // jobType: { value: "Frontend", label: "Frontend" },
+  // stacks: [{ label: "React", value: "React" }],
+  // jobDescription: "Sample Description",
+  // discord: "@samsek",
+  const [error, setError] = useState("");
+
   const cancelButtonRef = useRef(null);
-  const options = [
-    { value: 'chocolate', label: 'Chocolate' },
-    { value: 'strawberry', label: 'Strawberry' },
-    { value: 'vanilla', label: 'Vanilla' },
-  ];
   const customStyles = {
     control: (provided: any, state: any) => ({
       // none of react-select's styles are passed to <Control />
       ...provided,
       border: 0,
       outlineWidth: state.isFocused ? 0 : 0,
-      boxShadow: 'none'
+      boxShadow: "none",
     }),
     placeholder: (provided: any) => ({
       // none of react-select's styles are passed to <Control />
       ...provided,
-      color: 'black',
+      color: "black",
     }),
+  };
+
+  useEffect(() => {
+    setUser({
+      name: get(ENSNames, "[0]", get(accounts, "[0]", "Address Invalid")),
+      wallet: `${formatEther(get(balances, "[0]", 0))} Matic`,
+    });
+  }, [ENSNames, accounts, balances]);
+
+  const setDescriptionValue = (
+    keyName: string,
+    valName:
+      | string
+      | MultiValue<{ label: string; value: string }>
+      | SingleValue<{ value: string; label: string } | {}>
+      | null
+  ) => {
+    const tempDescription = Object.assign({}, description);
+    set(tempDescription, keyName, valName);
+    setDescription(tempDescription);
+  };
+
+  const submitTask = async () => {
+    setLoading(true);
+    setError("");
+    try {
+      let showError = false;
+      const keyList = [
+        "companyName",
+        "companyType",
+        "postName",
+        "jobDuration",
+        "jobType",
+        "stacks",
+        "jobDescription",
+      ];
+      keyList.forEach((item) => {
+        const value = get(description, item, "");
+        if (!value) {
+          setError("Please fill in all the fields");
+          showError = true;
+          return;
+        }
+      });
+      const discord = get(description, "discord", "");
+      const whatsapp = get(description, "whatsapp", "");
+      const telegram = get(description, "telegram", "");
+      const signal = get(description, "signal", "");
+      if (!discord && !whatsapp && !telegram && !signal) {
+        setError("Please fill in at lease one contact method");
+        showError = true;
+      }
+      if (!salary) {
+        setError("Please fill in salary");
+        showError = true;
+      } else if (parseFloat(salary) > parseFloat(get(user, "wallet", "0"))) {
+        setError("You don't have sufficient fund");
+        showError = true;
+      }
+      if (!showError) {
+        // IPFS
+        const ipfs = await axios(
+          "https://xjuqbit618.execute-api.us-east-1.amazonaws.com"
+        ).post(
+          "/dev/upload",
+          JSON.stringify({
+            ...description,
+            salary,
+            discord,
+            whatsapp,
+            telegram,
+            signal,
+          })
+        );
+        // Contract
+        const connectContract = new Contract(
+          CONTRACT_ADDRESS,
+          contractABI.abi,
+          provider?.getSigner()
+        );
+        const tx = await connectContract.createTask(
+          get(description, "jobDuration", ""),
+          get(ipfs, "data.url", ""),
+          { value: parseEther(salary).toString() }
+        );
+        if (!tx) {
+          setLoading(false);
+          setError("Some issue on the contract");
+          return;
+        }
+        provider!.once(tx.hash, async (tx) => {
+          // cache server
+          const result = await axios(
+            "https://liwaiw1kuj.execute-api.ap-southeast-1.amazonaws.com"
+          ).post("/tasks", {
+            ...description,
+            wallet: get(accounts, "[0]", "Address Invalid"),
+            salary,
+            discord,
+            whatsapp,
+            telegram,
+            signal,
+            tx: get(tx, "transactionHash", ""),
+            ipfs: get(ipfs, "data", {}),
+          });
+          setDescription({});
+          setSalary("");
+          setError("");
+          setLoading(false);
+          setOpen(false);
+        });
+      } else {
+        setLoading(false);
+      }
+    } catch (err) {
+      console.log(err);
+      setError("Server Issue (100)");
+      setLoading(false);
+    }
   };
   return (
     <Transition.Root show={open} as={Fragment}>
@@ -86,15 +268,21 @@ const AddTaskPopup: React.FC<AddTaskPopupProps> = ({ open, setOpen }) => {
                   <div className="bg-blue overflow-hidden grid grid-cols-5 lg:gap-4 border-black border-b-2">
                     <div className="pt-10 pb-8 px-4 sm:pt-16 sm:px-16 lg:py-10 lg:pr-0 xl:py-8 col-span-4 my-auto">
                       <div className="lg:self-center">
-                        <h2 className="font-extrabold text-white text-6xl">
-                          <span className="block">Solpeeps</span>
+                        <h2 className="font-extrabold text-white">
+                          <span className="block truncate text-6xl">
+                            Submit Task
+                          </span>
+                          <br />
+                          <span className="block truncate text-xl -mt-5">
+                            {user.name}
+                          </span>
                         </h2>
                       </div>
                     </div>
                     <div className="-mt-6 aspect-w-5 md:aspect-w-2 md:aspect-h-1 col-span-1">
                       <img
                         className="transform translate-y-6 w-full md:w-full -scale-x-1"
-                        src={'/assets/avatar/peep-7.svg'}
+                        src={"/assets/avatar/peep-7.svg"}
                         alt="PeepSVG"
                       />
                     </div>
@@ -102,94 +290,124 @@ const AddTaskPopup: React.FC<AddTaskPopupProps> = ({ open, setOpen }) => {
                   <div className="px-4 pt-5 pb-8 sm:px-10">
                     <div className="mt-4">
                       <p className="font-bold text-base text-black text-left">
-                        Company Name
+                        Company Name *
                       </p>
                       <input
                         type="text"
-                        className="focus:outline-none text-sm border-black border-t-2 border-x-2 border-b-4 rounded-lg w-full px-4 py-2 mt-2 placeholder:text-black placeholder:font-medium"
+                        className="focus:outline-none text-sm border-black border-t-2 border-x-2 border-b-4 rounded-lg w-full px-4 py-2 mt-2 placeholder:text-grey-500 placeholder:font-medium"
                         placeholder="Company Name"
+                        onChange={(e) =>
+                          setDescriptionValue("companyName", e.target.value)
+                        }
+                        value={get(description, "companyName", "")}
                       />
                     </div>
 
                     <div className="mt-4">
                       <p className="font-bold text-base text-black text-left">
-                        Company Type
+                        Company Type *
                       </p>
                       <input
                         type="text"
-                        className="focus:outline-none text-sm border-black border-t-2 border-x-2 border-b-4 rounded-lg w-full px-4 py-2 mt-2 placeholder:text-black placeholder:font-medium"
+                        className="focus:outline-none text-sm border-black border-t-2 border-x-2 border-b-4 rounded-lg w-full px-4 py-2 mt-2 placeholder:text-grey-500 placeholder:font-medium"
                         placeholder="Company Type"
+                        onChange={(e) =>
+                          setDescriptionValue("companyType", e.target.value)
+                        }
+                        value={get(description, "companyType", "")}
                       />
                     </div>
 
                     <div className="mt-4">
                       <p className="font-bold text-base text-black text-left">
-                        Post Name
+                        Post Name *
                       </p>
                       <input
                         type="text"
-                        className="focus:outline-none text-sm border-black border-t-2 border-x-2 border-b-4 rounded-lg w-full px-4 py-2 mt-2 placeholder:text-black placeholder:font-medium"
+                        className="focus:outline-none text-sm border-black border-t-2 border-x-2 border-b-4 rounded-lg w-full px-4 py-2 mt-2 placeholder:text-grey-500 placeholder:font-medium"
                         placeholder="Post Name"
+                        onChange={(e) =>
+                          setDescriptionValue("postName", e.target.value)
+                        }
+                        value={get(description, "postName", "")}
                       />
                     </div>
 
                     <div className="mt-4">
                       <p className="font-bold text-base text-black text-left">
-                        Job Duration
+                        Job Duration *
                       </p>
                       <input
                         type="number"
-                        className="focus:outline-none text-sm border-black border-t-2 border-x-2 border-b-4 rounded-lg w-full px-4 py-2 mt-2 placeholder:text-black placeholder:font-medium"
+                        className="focus:outline-none text-sm border-black border-t-2 border-x-2 border-b-4 rounded-lg w-full px-4 py-2 mt-2 placeholder:text-grey-500 placeholder:font-medium"
                         placeholder="Job Duration"
                         min={1}
+                        onChange={(e) =>
+                          setDescriptionValue("jobDuration", e.target.value)
+                        }
+                        value={get(description, "jobDuration", "")}
                       />
                     </div>
 
                     <div className="mt-4">
                       <p className="font-bold text-base text-black text-left">
-                        Job Type
+                        Job Type *
                       </p>
                       <Select
-                        className="focus:outline-none text-sm border-black border-t-2 border-x-2 border-b-4 rounded-lg w-full px-2 mt-2 placeholder:text-black placeholder:font-medium"
-                        options={options}
+                        className="focus:outline-none text-sm border-black border-t-2 border-x-2 border-b-4 rounded-lg w-full px-2 mt-2 placeholder:text-grey-500 placeholder:font-medium"
+                        options={jobTypeOptions}
                         styles={customStyles}
                         placeholder="Job Type"
+                        onChange={(newValue) =>
+                          setDescriptionValue("jobType", newValue)
+                        }
+                        value={get(description, "jobType", {})}
                       />
                     </div>
 
                     <div className="mt-4">
                       <p className="font-bold text-base text-black text-left">
-                        Required Software / Stacks
+                        Required Software / Stacks *
                       </p>
                       <Select
-                        className="focus:outline-none text-sm border-black border-t-2 border-x-2 border-b-4 rounded-lg w-full px-2 mt-2 placeholder:text-black placeholder:font-medium"
-                        options={options}
+                        className="focus:outline-none text-sm border-black border-t-2 border-x-2 border-b-4 rounded-lg w-full px-2 mt-2 placeholder:text-grey-500 placeholder:font-medium"
+                        options={stackTypeOptions}
                         styles={customStyles}
                         placeholder="Required Software / Stacks"
                         isMulti
+                        onChange={(newValue) =>
+                          setDescriptionValue("stacks", newValue)
+                        }
+                        value={get(description, "stacks", [])}
                       />
                     </div>
 
                     <div className="mt-4">
                       <p className="font-bold text-base text-black text-left">
-                        Salary
+                        Salary (Matic) *
                       </p>
                       <input
                         type="number"
-                        className="focus:outline-none text-sm border-black border-t-2 border-x-2 border-b-4 rounded-lg w-full px-4 py-2 mt-2 placeholder:text-black placeholder:font-medium"
+                        className="focus:outline-none text-sm border-black border-t-2 border-x-2 border-b-4 rounded-lg w-full px-4 py-2 mt-2 placeholder:text-grey-500 placeholder:font-medium"
                         placeholder="Salary"
                         min={1}
+                        onChange={(e) => setSalary(e.target.value)}
+                        value={salary}
                       />
                     </div>
 
                     <div className="mt-4">
                       <p className="font-bold text-base text-black text-left">
-                        Job Description
+                        Job Description *
                       </p>
                       <textarea
                         rows={4}
-                        className="focus:outline-none text-sm border-black border-t-2 border-x-2 border-b-4 rounded-lg w-full px-4 py-2 mt-2 placeholder:text-black placeholder:font-medium"
+                        className="focus:outline-none text-sm border-black border-t-2 border-x-2 border-b-4 rounded-lg w-full px-4 py-2 mt-2 placeholder:text-grey-500 placeholder:font-medium"
                         placeholder="Job Description"
+                        onChange={(e) =>
+                          setDescriptionValue("jobDescription", e.target.value)
+                        }
+                        value={get(description, "jobDescription", "")}
                       ></textarea>
                     </div>
                     <div className="mt-4">
@@ -204,8 +422,12 @@ const AddTaskPopup: React.FC<AddTaskPopupProps> = ({ open, setOpen }) => {
                           </p>
                           <input
                             type="text"
-                            className="focus:outline-none text-sm border-black border-t-2 border-x-2 border-b-4 rounded-lg w-full px-4 py-2 mt-2 placeholder:text-black placeholder:font-medium"
+                            className="focus:outline-none text-sm border-black border-t-2 border-x-2 border-b-4 rounded-lg w-full px-4 py-2 mt-2 placeholder:text-grey-500 placeholder:font-medium"
                             placeholder="Discord Account"
+                            onChange={(e) =>
+                              setDescriptionValue("discord", e.target.value)
+                            }
+                            value={get(description, "discord", "")}
                           />
                         </div>
                         <div>
@@ -214,7 +436,7 @@ const AddTaskPopup: React.FC<AddTaskPopupProps> = ({ open, setOpen }) => {
                           </p>
                           <input
                             type="text"
-                            className="focus:outline-none text-sm border-black border-t-2 border-x-2 border-b-4 rounded-lg w-full px-4 py-2 mt-2 placeholder:text-black placeholder:font-medium"
+                            className="focus:outline-none text-sm border-black border-t-2 border-x-2 border-b-4 rounded-lg w-full px-4 py-2 mt-2 placeholder:text-grey-500 placeholder:font-medium"
                             placeholder="Telegram Account"
                           />
                         </div>
@@ -224,8 +446,12 @@ const AddTaskPopup: React.FC<AddTaskPopupProps> = ({ open, setOpen }) => {
                           </p>
                           <input
                             type="text"
-                            className="focus:outline-none text-sm border-black border-t-2 border-x-2 border-b-4 rounded-lg w-full px-4 py-2 mt-2 placeholder:text-black placeholder:font-medium"
+                            className="focus:outline-none text-sm border-black border-t-2 border-x-2 border-b-4 rounded-lg w-full px-4 py-2 mt-2 placeholder:text-grey-500 placeholder:font-medium"
                             placeholder="Whatsapp Account"
+                            onChange={(e) =>
+                              setDescriptionValue("whatsapp", e.target.value)
+                            }
+                            value={get(description, "whatsapp", "")}
                           />
                         </div>
                         <div>
@@ -234,15 +460,24 @@ const AddTaskPopup: React.FC<AddTaskPopupProps> = ({ open, setOpen }) => {
                           </p>
                           <input
                             type="text"
-                            className="focus:outline-none text-sm border-black border-t-2 border-x-2 border-b-4 rounded-lg w-full px-4 py-2 mt-2 placeholder:text-black placeholder:font-medium"
+                            className="focus:outline-none text-sm border-black border-t-2 border-x-2 border-b-4 rounded-lg w-full px-4 py-2 mt-2 placeholder:text-grey-500 placeholder:font-medium"
                             placeholder="Signal Account"
+                            onChange={(e) =>
+                              setDescriptionValue("signal", e.target.value)
+                            }
+                            value={get(description, "signal", "")}
                           />
                         </div>
                       </div>
                     </div>
 
+                    {error && <p className="mt-2 text-red">{error}</p>}
+
                     <div className="mt-16">
-                      <button className="bg-green font-bold text-sm border-black border-t-2 border-x-2 border-b-4 text-center rounded-lg py-1 px-12">
+                      <button
+                        onClick={() => submitTask()}
+                        className="bg-green font-bold text-sm border-black border-t-2 border-x-2 border-b-4 text-center rounded-lg py-1 px-12"
+                      >
                         Submit
                       </button>
                       <button

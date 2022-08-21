@@ -77,7 +77,7 @@ const NavBar = ({
   useEffect(() => {
     setUser({
       name: get(ENSNames, "[0]", get(accounts, "[0]", "Address Invalid")),
-      wallet: `Ξ ${formatEther(get(balances, "[0]", 0))}`,
+      wallet: `${formatEther(get(balances, "[0]", 0))} Matic`,
     });
   }, [ENSNames, accounts, balances]);
 

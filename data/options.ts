@@ -1,4 +1,9 @@
-const jobTypes = [
+type JobType = {
+  name: string;
+  color: string;
+}
+
+const jobTypes: Array<JobType> = [
   {
     name: 'All',
     color: 'green',
@@ -114,4 +119,123 @@ const sampleData2: Array<SampleData> = [
   },
 ];
 
-export { jobTypes, sampleData, sampleData2 };
+const jobTypeFunctions = () => {
+  const tempJobTypes: Array<JobType> = Object.assign([], jobTypes);
+  tempJobTypes.splice(0, 1);
+  const options = tempJobTypes.map(item => {
+    return {
+      value: item.name,
+      label: item.name
+    }
+  });
+  return options;
+};
+
+const jobTypeOptions = jobTypeFunctions();
+
+const stackTypeOptions = [
+  {
+    label: "React",
+    value: "React",
+  },
+  {
+    label: "Angular",
+    value: "Angular",
+  },
+  {
+    label: "Vue",
+    value: "Vue",
+  },
+  {
+    label: "Next",
+    value: "Next",
+  },
+  {
+    label: "Node",
+    value: "Node",
+  },
+  {
+    label: "Express",
+    value: "Express",
+  },
+  {
+    label: "Python",
+    value: "Python",
+  },
+  {
+    label: "Django",
+    value: "Django",
+  },
+  {
+    label: "PHP",
+    value: "PHP",
+  },
+  {
+    label: "Ruby",
+    value: "Ruby",
+  },
+  {
+    label: "Laravel",
+    value: "Laravel",
+  },
+  {
+    label: "Java",
+    value: "Java",
+  },
+  {
+    label: "Spring Boot",
+    value: "Spring Boot",
+  },
+  {
+    label: "Golang",
+    value: "Golang",
+  },
+  {
+    label: "Mongodb",
+    value: "Mongodb",
+  },
+  {
+    label: "MySQL",
+    value: "MySQL",
+  },
+  {
+    label: "PostgreSQL",
+    value: "PostgreSQL",
+  },
+  {
+    label: "Unity",
+    value: "Unity",
+  },
+  {
+    label: "React Native",
+    value: "React Native",
+  },
+  {
+    label: "Kotlin",
+    value: "Kotlin",
+  },
+  {
+    label: "Swift",
+    value: "Swift",
+  },
+  {
+    label: "Solidity",
+    value: "Solidity",
+  },
+  {
+    label: "Rust",
+    value: "Rust",
+  },
+  {
+    label: "Docker",
+    value: "Docker",
+  },
+  {
+    label: "AWS",
+    value: "AWS",
+  },
+];
+
+
+
+export { jobTypes, jobTypeOptions, stackTypeOptions, sampleData, sampleData2 };
