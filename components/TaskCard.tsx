@@ -140,7 +140,7 @@ const TaskCard: React.FC<TaskCardProps> = ({
               onClick={() => onClick()}
               className="font-bold text-base w-full border-black border-t-2 border-x-2 border-b-4 text-center rounded-lg py-1"
             >
-              Apply Now
+              View
             </button>
           </div>
         </div>

@@ -262,6 +262,7 @@ const TaskPopup: React.FC<TaskPopupProps> = ({
         setLoading(false);
         setError("");
         setStatus(2);
+        setSelectedApplicant(applicantAddress);
         await axios(
           "https://liwaiw1kuj.execute-api.ap-southeast-1.amazonaws.com"
         ).put("/tasks/status", {
@@ -405,6 +406,34 @@ const TaskPopup: React.FC<TaskPopupProps> = ({
       });
     }
   };
+  const disputeTask = async () => {
+    if (confirm("Do you want to dispute this task?")) {
+      setError("");
+      setLoading(true);
+      const connectContract = new Contract(
+        CONTRACT_ADDRESS,
+        contractABI.abi,
+        provider?.getSigner()
+      );
+      const tx = await connectContract.requestDispute(taskID);
+      if (!tx) {
+        setLoading(false);
+        setError("Some issue on the contract");
+        return;
+      }
+      provider!.once(tx.hash, async (tx) => {
+        await axios(
+          "https://liwaiw1kuj.execute-api.ap-southeast-1.amazonaws.com"
+        ).put("/tasks/status", {
+          PK,
+          status: "failed",
+        });
+        setLoading(false);
+        setError("");
+        setStatus(4);
+      });
+    }
+  };
   return (
     <Transition.Root show={open} as={Fragment}>
       <Dialog
@@ -484,7 +513,7 @@ const TaskPopup: React.FC<TaskPopupProps> = ({
                       <div className="lg:self-center">
                         <h2 className="text-xl font-extrabold text-black sm:text-3xl">
                           <span className="block">
-                            {get(jobDesc, "postName", "")}
+                            {get(jobDesc, "postName", "")} {status === 4 && '(DISPUTED)'}
                           </span>
                         </h2>
                         <p className="text-lg leading-6 text-black">
@@ -627,7 +656,7 @@ const TaskPopup: React.FC<TaskPopupProps> = ({
                         {get(jobDesc, "jobDescription", "")}
                       </p>
                     </div>
-                    {creator === wallet && (
+                    {(creator === wallet && status !== 1) && (
                       <div className="mt-4">
                         <p className="font-bold text-base text-black text-center md:text-left">
                           Candidate
@@ -712,25 +741,28 @@ const TaskPopup: React.FC<TaskPopupProps> = ({
                         <p className="font-bold text-base text-black text-center md:text-left">
                           Submission Attachment
                         </p>
-                        <p className="text-black text-sm border-black border-t-2 border-x-2 border-b-4 rounded-lg w-full px-4 py-2 mt-2">
-                          {submission || "Not Yet Submitted"}
-                        </p>
+                        <textarea
+                          rows={1}
+                          className="focus:outline-none text-sm border-black border-t-2 border-x-2 border-b-4 rounded-lg w-full px-4 py-2 mt-2 placeholder:text-black placeholder:font-medium"
+                          placeholder="Submission Attachment"
+                          value={submission || "Not Yet Submitted"}
+                        ></textarea>
                       </div>
                     )}
-                    {status > 2 && creator === wallet && (
+                    {status >= 2 && creator === wallet && (
                       <div className="mt-4">
                         <p className="font-bold text-base text-black text-center md:text-left">
                           Submission Attachment
                         </p>
-                        <p className="text-black text-sm border-black border-t-2 border-x-2 border-b-4 rounded-lg w-full px-4 py-2 mt-2">
-                          {submission || "Not Yet Submitted"}
-                        </p>
+                        <textarea
+                          rows={1}
+                          className="focus:outline-none text-sm border-black border-t-2 border-x-2 border-b-4 rounded-lg w-full px-4 py-2 mt-2 placeholder:text-black placeholder:font-medium"
+                          placeholder="Submission Attachment"
+                          value={submission || "Not Yet Submitted"}
+                        ></textarea>
                       </div>
                     )}
-                    {(status === 2 && creator === wallet && submission) ||
-                      (status === 3 &&
-                        selectedApplicant === wallet &&
-                        get(allComment, "creatorRating", 0) === 0 && (
+                    {((status === 2 && creator === wallet && submission !== '') || (status === 3 && selectedApplicant === wallet && get(allComment, "creatorRating", 0) === 0)) && (
                           <div className="mt-4">
                             <p className="font-bold text-base text-black text-center md:text-left">
                               Rating
@@ -765,7 +797,7 @@ const TaskPopup: React.FC<TaskPopupProps> = ({
                               />
                             </div>
                           </div>
-                        ))}
+                        )}
                     {status === 3 &&
                       (creator === wallet ||
                         (selectedApplicant === wallet &&
@@ -852,13 +884,21 @@ const TaskPopup: React.FC<TaskPopupProps> = ({
                       )}
                       {creator === wallet && status === 2 && (
                         <>
-                          {submission ? (
-                            <button
-                              onClick={() => approveTask()}
-                              className="bg-green font-bold text-sm border-black border-t-2 border-x-2 border-b-4 text-center rounded-lg py-1 px-12"
-                            >
-                              Approve Task
-                            </button>
+                          {submission !== '' ? (
+                            <>
+                              <button
+                                onClick={() => disputeTask()}
+                                className="bg-red font-bold text-sm border-black border-t-2 border-x-2 border-b-4 text-center rounded-lg py-1 px-12"
+                              >
+                                Dispute Task
+                              </button>
+                              <button
+                                onClick={() => approveTask()}
+                                className="ml-4 bg-green font-bold text-sm border-black border-t-2 border-x-2 border-b-4 text-center rounded-lg py-1 px-12"
+                              >
+                                Approve Task
+                              </button>
+                            </>
                           ) : (
                             <button className="cursor-not-allowed bg-gray font-bold text-sm border-black border-t-2 border-x-2 border-b-4 text-center rounded-lg py-1 px-12">
                               Cancel Task
@@ -893,6 +933,11 @@ const TaskPopup: React.FC<TaskPopupProps> = ({
                             </button>
                           )}
                         </>
+                      )}
+                      {status === 4 && (
+                        <button className="cursor-not-allowed bg-gray font-bold text-sm border-black border-t-2 border-x-2 border-b-4 text-center rounded-lg py-1 px-12">
+                          Task Being Disputed
+                        </button>
                       )}
                       {creator !== wallet && status === 0 && (
                         <>

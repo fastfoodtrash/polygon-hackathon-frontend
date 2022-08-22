@@ -44,7 +44,7 @@ const JobPage: NextPage = () => {
     "resume"
   );
   const [friendOpen, setFriendOpen] = useState(false);
-  const [addTaskOpen, setAddTaskOpen] = useState(true);
+  const [addTaskOpen, setAddTaskOpen] = useState(false);
   const [data, setData] = useState([]);
 
   const [taskID, setTaskID] = useState("8");
