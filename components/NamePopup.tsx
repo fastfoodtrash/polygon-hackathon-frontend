@@ -1,24 +1,63 @@
-import { Fragment, useRef } from 'react';
-import { Dialog, Transition } from '@headlessui/react';
-import { XIcon } from '@heroicons/react/solid';
+import { Fragment, useRef, useEffect, useState } from "react";
+import { Dialog, Transition } from "@headlessui/react";
+import { XIcon } from "@heroicons/react/solid";
+import { Web3ReactHooks } from "@web3-react/core";
+import { Contract } from "ethers";
 
-import { DocumentTextIcon, UserGroupIcon } from '@heroicons/react/outline';
+import { DocumentTextIcon, UserGroupIcon } from "@heroicons/react/outline";
 
-import { sampleData2 } from '../data/options';
-import TaskCard from './TaskCard';
+import { sampleData2 } from "../data/options";
+import TaskCard from "./TaskCard";
+
+import CONTRACT_ADDRESS from "../contract/service";
+import contractABI from "../contract/TasksV1.json";
+import axios from "../utils/service";
+import { get } from "lodash";
 
 interface NamecardPopupProps {
   open: boolean;
+  hooks: Web3ReactHooks;
   setOpen: (value: boolean) => void;
-  type: 'namecard' | 'resume';
+  type: "namecard" | "resume";
+  address: string;
+  setLoading: (newValue: boolean) => void;
 }
 
 const NamecardPopup: React.FC<NamecardPopupProps> = ({
   type,
   open,
   setOpen,
+  address,
+  setLoading,
+  hooks,
 }) => {
+  const { useProvider } = hooks;
+  const [data, setData] = useState([]);
+  const [friends, setFriends] = useState([]);
+
+  const provider = useProvider();
   const cancelButtonRef = useRef(null);
+  useEffect(() => {
+    async function fetchData() {
+      setLoading(true);
+      let response = await axios(
+        "https://liwaiw1kuj.execute-api.ap-southeast-1.amazonaws.com"
+      ).get("/tasks");
+      let tempData = get(response, "data.data", []);
+      tempData = tempData.filter(
+        (item: any) => get(item, "wallet", "") === address || get(item, "selectedApply", "") === address
+      );
+      setData(tempData);
+
+      response = await axios(
+        "https://liwaiw1kuj.execute-api.ap-southeast-1.amazonaws.com"
+      ).get("/friends", { params: { wallet: address } });
+      tempData = get(response, "data.data", []);
+      setFriends(tempData);
+      setLoading(false);
+    }
+    fetchData();
+  }, [setLoading, provider, address]);
   return (
     <Transition.Root show={open} as={Fragment}>
       <Dialog
@@ -56,7 +95,7 @@ const NamecardPopup: React.FC<NamecardPopupProps> = ({
                     <div className="flex-shrink-1">
                       <p>
                         <span className="font-bold text-lg inline-block align-middle ml-2 mt-1">
-                          My {type === 'namecard' ? 'Namecard' : 'DeSume'}
+                          My {type === "namecard" ? "Namecard" : "Resume"}
                         </span>
                       </p>
                     </div>
@@ -77,22 +116,24 @@ const NamecardPopup: React.FC<NamecardPopupProps> = ({
                     <div className="bg-green overflow-hidden grid grid-cols-5 lg:gap-4 border-black border-x-2 border-t-2 border-b-4 rounded-lg">
                       <div className="py-12 px-4 sm:pt-16 sm:px-12 lg:pr-0 col-span-3 my-auto">
                         <div className="lg:self-center">
-                          <h2 className="text-5xl font-extrabold text-black">
-                            <span className="block">Polypeeps</span>
+                          <h2 className="text-4xl font-extrabold text-black">
+                            <span className="block w-full break-words">
+                              {address}
+                            </span>
                           </h2>
                           <p className="text-xl leading-6 text-black mt-4 font-medium">
                             <DocumentTextIcon
                               className="inline-block h-7 w-7 align-middle"
                               aria-hidden="true"
-                            />{' '}
-                            25 Tasks
+                            />{" "}
+                            {data.length} Tasks
                           </p>
                           <p className="text-xl leading-6 text-black mt-4 font-medium">
                             <UserGroupIcon
                               className="inline-block h-7 w-7 align-middle"
                               aria-hidden="true"
-                            />{' '}
-                            12 Friends
+                            />{" "}
+                            {friends.length} Friends
                           </p>
                           <p className="text-xl leading-6 text-black mt-4 font-medium">
                             <img
@@ -100,7 +141,7 @@ const NamecardPopup: React.FC<NamecardPopupProps> = ({
                               alt="polygon icon"
                               className="inline-block h-7 w-7 align-middle"
                               aria-hidden="true"
-                            />{' '}
+                            />{" "}
                             250 Polygon Earned
                           </p>
                         </div>
@@ -114,20 +155,22 @@ const NamecardPopup: React.FC<NamecardPopupProps> = ({
                       </div>
                     </div>
                   </div>
-                  {type === 'resume' && (
+                  {type === "resume" && data.length > 0 && (
                     <div className="mt-4 px-6 mb-12">
                       <p className="font-bold text-xl">History</p>
                       <div className="mt-4 mx-auto grid gap-5 sm:grid-cols-2 lg:max-w-none">
-                        {sampleData2.map((item) => (
+                        {data.map((item: any) => (
                           <TaskCard
-                            key={item.id}
-                            type={item.type}
-                            createDate={item.createDate}
-                            jobName={item.jobName}
-                            jobType={item.jobType}
-                            userBookmarked={item.userBookmarked}
-                            userView={item.userView}
-                            slack={item.slackList[0]}
+                            key={get(item, "PK", "")}
+                            type={get(item, "status", "pending")}
+                            createDate={get(item, "createTime", 0)}
+                            jobName={get(item, "postName", "")}
+                            jobType={get(item, "jobType.value", "")}
+                            userBookmarked={get(item, "bookmark", []).length}
+                            userView={get(item, "apply", []).length}
+                            slack={get(item, "stacks", []).map((stack: any) =>
+                              get(stack, "value", "")
+                            )}
                             onClick={() => {}}
                           />
                         ))}
@@ -142,7 +185,7 @@ const NamecardPopup: React.FC<NamecardPopupProps> = ({
                           className="h-4 w-4 inline-block align-middle mr-1"
                           aria-hidden="true"
                           alt="twitter icon"
-                        />{' '}
+                        />{" "}
                         Share Twitter
                       </button>
                       <button className="mb-2 mr-2 bg-facebook text-white font-bold text-sm border-black border-t-2 border-x-2 border-b-4 text-center rounded-lg py-1 px-4">
@@ -151,7 +194,7 @@ const NamecardPopup: React.FC<NamecardPopupProps> = ({
                           className="h-4 w-4 inline-block align-middle mr-1"
                           aria-hidden="true"
                           alt="facebook icon"
-                        />{' '}
+                        />{" "}
                         Share Facebook
                       </button>
                       <button className="mb-2 bg-share text-white font-bold text-sm border-black border-t-2 border-x-2 border-b-4 text-center rounded-lg py-1 px-4">
@@ -160,7 +203,7 @@ const NamecardPopup: React.FC<NamecardPopupProps> = ({
                           className="h-4 w-4 inline-block align-middle mr-1"
                           aria-hidden="true"
                           alt="Share icon"
-                        />{' '}
+                        />{" "}
                         Share
                       </button>
                     </div>

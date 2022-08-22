@@ -676,12 +676,12 @@ const TaskPopup: React.FC<TaskPopupProps> = ({
                                 </div>
                                 <div className="flex-shrink-0 ml-auto">
                                   <div className="w-36 grid grid-cols-2 gap-2">
-                                    <div className="col-span-1">
+                                    {/* <div className="col-span-1">
                                       <button className="border-black border-t-2 border-b-4 border-x-2 rounded-lg font-bold w-full py-1">
                                         View
                                       </button>
-                                    </div>
-                                    <div className="col-span-1">
+                                    </div> */}
+                                    <div className="col-span-2">
                                       <button
                                         onClick={() => selectApplicant(item)}
                                         className="border-black border-t-2 border-b-4 border-x-2 rounded-lg font-bold w-full py-1"
@@ -705,9 +705,9 @@ const TaskPopup: React.FC<TaskPopupProps> = ({
                             <div className="flex-shrink-0 ml-auto">
                               <div className="w-36 grid grid-cols-2 gap-2">
                                 <div className="col-span-2">
-                                  <button className="border-black border-t-2 border-b-4 border-x-2 rounded-lg font-bold w-full py-1">
+                                  {/* <button className="border-black border-t-2 border-b-4 border-x-2 rounded-lg font-bold w-full py-1">
                                     View
-                                  </button>
+                                  </button> */}
                                 </div>
                               </div>
                             </div>

@@ -182,9 +182,12 @@ const JobPage: NextPage = () => {
           PK={PK}
         />
         <NamecardPopup
+          address={get(accounts, '[0]', '')}
+          hooks={hooks}
           type={nameCardType}
           open={namecardOpen}
           setOpen={setNamecardOpen}
+          setLoading={setLoading}
         />
         <FriendPopup
           setLoading={setLoading}
@@ -230,7 +233,7 @@ const JobPage: NextPage = () => {
                   <div className="group aspect-w-2 aspect-h-1 col-span-12 sm:col-span-4 lg:col-span-3 rounded-lg overflow-hidden sm:relative sm:aspect-none sm:h-full">
                     <MenuButton
                       icon="resume"
-                      name="DeSume"
+                      name="Resume"
                       subText="View my resume"
                       onClick={() => navigate("resume")}
                     />
