@@ -150,7 +150,7 @@ const NamecardPopup: React.FC<NamecardPopupProps> = ({
                               className="inline-block h-7 w-7 align-middle"
                               aria-hidden="true"
                             />{" "}
-                            {earning} Polygon Earned
+                            {earning} Matic Earned
                           </p>
                         </div>
                       </div>
