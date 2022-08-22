@@ -13,7 +13,7 @@ import {
 import { jobTypes } from "../data/options";
 
 interface TaskCardProps {
-  type: "bookmark" | "bookmarked" | "finished" | "failed";
+  type: "bookmark" | "bookmarked" | "finished" | "failed" | "pending" | "started";
   createDate: number;
   jobType: string;
   jobName: string;
@@ -53,6 +53,11 @@ const TaskCard: React.FC<TaskCardProps> = ({
           className="position-center h-8 w-8"
           aria-hidden="true"
         />
+      </button>
+    ),
+    started: (
+      <button className="cursor-default bg-light-yellow -mt-1 -mr-1 top-0 right-0 absolute w-14 h-14 border-black border-t-2 border-x-2 border-b-4 rounded-lg text-center">
+        <LightningBoltIcon className="position-center h-8 w-8" aria-hidden="true" />
       </button>
     ),
     pending: (

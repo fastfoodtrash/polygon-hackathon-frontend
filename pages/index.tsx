@@ -38,18 +38,21 @@ const JobPage: NextPage = () => {
   const [filter, setFilter] = useState("All");
   const [bookmark, setBookmark] = useState(false);
   const [all, setAll] = useState(true);
-  const [taskOpen, setTaskOpen] = useState(false);
+  const [taskOpen, setTaskOpen] = useState(true);
   const [namecardOpen, setNamecardOpen] = useState(false);
   const [nameCardType, setNamecardType] = useState<"resume" | "namecard">(
     "resume"
   );
-  const [friendOpen, setFriendOpen] = useState(true);
+  const [friendOpen, setFriendOpen] = useState(false);
   const [addTaskOpen, setAddTaskOpen] = useState(false);
   const [data, setData] = useState([]);
 
-  const [txDetail, setTxDetail] = useState(
-    "0x1b8af7a824d859ecc4f2d44d7f0fbab1b279a5cb1ecbcf68c9edd5f70a6824a1"
-  );
+  const [taskID, setTaskID] = useState("6");
+  const [PK, setPK] = useState("0x1b8af7a824d859ecc4f2d44d7f0fbab1b279a5cb1ecbcf68c9edd5f70a6824a1");
+  const [tastDetail, setTaskDetail] = useState({
+    userBookmarked: 0,
+    userView: 1000,
+  });
 
   const isActive = useIsActive();
   const accounts = useAccounts();
@@ -149,8 +152,7 @@ const JobPage: NextPage = () => {
     return tempData;
   }, [data, bookmark, all, accounts, filter, search]);
 
-  const taskDetailOpen = (tx: string) => {
-    setTxDetail(tx);
+  const taskDetailOpen = (taskID: string) => {
     setTaskOpen(true);
   };
 
@@ -165,11 +167,13 @@ const JobPage: NextPage = () => {
       <div className="App">
         <LoadingBar open={loading} />
         <TaskPopup
-          tx={txDetail}
+          taskID={taskID}
           hooks={hooks}
           open={taskOpen}
           setOpen={setTaskOpen}
           setLoading={setLoading}
+          tastDetail={tastDetail}
+          PK={PK}
         />
         <NamecardPopup
           type={nameCardType}

@@ -1,4 +1,4 @@
-import { Fragment, useEffect, useRef, useState } from "react";
+import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import { Dialog, Transition } from "@headlessui/react";
 import classNames from "classnames";
 import { Web3ReactHooks } from "@web3-react/core";
@@ -18,51 +18,301 @@ import { BigNumber } from "@ethersproject/bignumber";
 import { formatEther, parseEther } from "@ethersproject/units";
 import { get, set } from "lodash";
 
+import moment from "moment";
+
 import Dropzone from "../components/Dropzone";
 import CONTRACT_ADDRESS from "../contract/service";
 import contractABI from "../contract/TasksV1.json";
+import axios from "../utils/service";
+import { jobTypes } from "../data/options";
+
+const colorMap = {
+  yellow: "#FBBF16",
+  "light-yellow": "#F9F8CB",
+  green: "#00C6AD",
+  red: "#F85A2A",
+  white: "#FFF",
+};
 
 interface TaskPopupProps {
   open: boolean;
   hooks: Web3ReactHooks;
-  tx?: string;
+  taskID?: string;
+  PK?: string;
   setOpen: (value: boolean) => void;
   setLoading: (newValue: boolean) => void;
+  tastDetail: {
+    userBookmarked: number;
+    userView: number;
+  };
 }
 
-const TaskPopup: React.FC<TaskPopupProps> = ({ open, setOpen, hooks, tx, setLoading }) => {
-  const { useProvider, useAccounts, useENSNames } = hooks;
+const TaskPopup: React.FC<TaskPopupProps> = ({
+  open,
+  setOpen,
+  hooks,
+  taskID,
+  PK,
+  setLoading,
+  tastDetail,
+}) => {
+  const { useProvider, useAccounts } = hooks;
 
   const provider = useProvider();
-  const ENSNames = useENSNames(provider);
   const accounts = useAccounts();
 
-  const [user, setUser] = useState({ name: "", wallet: "" });
+  const [createTime, setCreateTime] = useState(0);
+  const [startTime, setStartTime] = useState(0);
+  const [countDown, setCountDown] = useState({ day: "0", hour: "0", min: "0" });
+  const [duration, setDuration] = useState(0);
 
-  const [error, setError] = useState("");
+  const [creator, setCreator] = useState("");
+  const [selectedApplicant, setSelectedApplicant] = useState("");
+  const [attachment, setAttachment] = useState("");
+  const [submission, setSubmission] = useState("");
+
+  const [comment, setComment] = useState("");
   const [starHover, setStarHover] = useState(0);
   const [starSelect, setStarSelect] = useState(0);
+  // const [attachment, setAttachment] = useState<Array<File>>([]);
+
+  const cancelButtonRef = useRef(null);
+  const [error, setError] = useState("");
 
   const totalStar = 5;
 
-  const [attachment, setAttachment] = useState<Array<File>>([]);
-  const cancelButtonRef = useRef(null);
-  const userView = 1234;
-  const userBookmarked = 1234;
-  const polyCost = 1000;
-  const stackList = ["React JS", "Node JS", "MongoDB"];
-  const jobDescription =
-    "Coins.ph is on a mission to create an open financial system by providing everyone easy access to Web3 and digital assets. A regulated entity, Coins is the most established crypto brand in the Philippines and has gained the trust of more than 16 million users. Through the easy-to-use mobile app, users can buy and sell a variety of different cryptocurrencies and also access a wide range of payment services.";
+  const [polyCost, setPolyCost] = useState(0);
+  const [status, setStatus] = useState(0);
+  const [jobDesc, setJobDesc] = useState({});
+
+  const [applicant, setApplicant] = useState<Array<string>>([]);
+
   useEffect(() => {
     async function fetchData() {
+      setLoading(true);
+      if (provider) {
+        const connectContract = new Contract(
+          CONTRACT_ADDRESS,
+          contractABI.abi,
+          provider?.getSigner()
+        );
+        const result = await connectContract.tasks(taskID);
+        const tempCreator = get(result, "creator", "").toString();
+        const tempStatus = get(result, "status", 0);
+        const address = get(accounts, "[0]", "");
+        setPolyCost(get(result, "salary", 0).toString());
+        setCreateTime(get(result, "createdTime", 0).toString());
+        setStartTime(get(result, "startTime", 0).toString());
+        setDuration(get(result, "duration", 0).toString());
+        setSubmission(get(result, "submission", "").toString());
+        setCreator(tempCreator);
+        setStatus(tempStatus);
+        setSelectedApplicant(get(result, "provider", "").toString());
+
+        const jobDesc = get(result, "jobDesc", "");
+        const response = await axios(jobDesc).get("");
+        setJobDesc(get(response, "data", {}));
+
+        if (tempStatus === 0) {
+          let applicantResult = await connectContract.getApplicant(taskID);
+          applicantResult = applicantResult.filter(
+            (item: string) =>
+              item !== "0x0000000000000000000000000000000000000000"
+          );
+          setApplicant(applicantResult);
+        }
+      }
+      setLoading(false);
+    }
+    fetchData();
+  }, [taskID, provider, setLoading, accounts]);
+
+  useEffect(() => {
+    const counter = () => {
+      const currentTime = moment().unix();
+      const endTime = moment.unix(startTime).add(duration, "days").unix();
+      const differenceTime = endTime - currentTime;
+      if (differenceTime > 0) {
+        const day = Math.floor(differenceTime / 86400);
+        const hour = Math.floor((differenceTime - day * 86400) / 3600);
+        const min = Math.floor(
+          (differenceTime - day * 86400 - hour * 3600) / 60
+        );
+        setCountDown({
+          day: day.toString(),
+          hour: hour.toString(),
+          min: min.toString(),
+        });
+      }
+    };
+    const timeLoop = setInterval(counter, 60000);
+    counter();
+    return () => clearInterval(timeLoop);
+  }, [status, startTime, duration]);
+
+  const jobFormat = useMemo(() => {
+    return jobTypes.find(
+      (item: any) => item.name === get(jobDesc, "jobType.value", "Frontend")
+    );
+  }, [jobDesc]);
+
+  const stackList = useMemo(() => {
+    return get(jobDesc, "stacks", []).map((item: any) => item.value);
+  }, [jobDesc]);
+
+  const wallet = useMemo(() => {
+    return get(accounts, "[0]", "");
+  }, [accounts]);
+
+  // Action
+  const applyApplication = async () => {
+    setError("");
+    setLoading(true);
+    const connectContract = new Contract(
+      CONTRACT_ADDRESS,
+      contractABI.abi,
+      provider?.getSigner()
+    );
+    const tx = await connectContract.applyTask(taskID);
+    if (!tx) {
+      setLoading(false);
+      setError("Some issue on the contract");
+      return;
+    }
+    provider!.once(tx.hash, async (tx) => {
+      setLoading(false);
+      setError("");
+      const tempApplicant = Object.assign([], applicant);
+      tempApplicant.push(get(accounts, "[0]", ""));
+      setApplicant(tempApplicant);
+      const response = await axios(
+        "https://liwaiw1kuj.execute-api.ap-southeast-1.amazonaws.com"
+      ).put("/tasks/apply", {
+        PK,
+        wallet: get(accounts, "[0]", ""),
+        apply: true,
+      });
+    });
+  };
+
+  const withdrawApplication = async () => {
+    if (confirm("Do you want to withdraw application?")) {
+      setError("");
+      setLoading(true);
       const connectContract = new Contract(
         CONTRACT_ADDRESS,
         contractABI.abi,
         provider?.getSigner()
       );
+      const tx = await connectContract.withdrawApplication(taskID);
+      if (!tx) {
+        setLoading(false);
+        setError("Some issue on the contract");
+        return;
+      }
+      provider!.once(tx.hash, async (tx) => {
+        setLoading(false);
+        setError("");
+        const tempApplicant = Object.assign([], applicant);
+        const index = tempApplicant.findIndex(
+          (item: any) => item === get(accounts, "[0]", "")
+        );
+        if (index > -1) {
+          tempApplicant.splice(index, 1);
+        }
+        setApplicant(tempApplicant);
+        const response = await axios(
+          "https://liwaiw1kuj.execute-api.ap-southeast-1.amazonaws.com"
+        ).put("/tasks/apply", {
+          PK,
+          wallet: get(accounts, "[0]", ""),
+          apply: false,
+        });
+      });
     }
-    fetchData();
-  }, [tx]);
+  };
+
+  const selectApplicant = async (applicantAddress: string) => {
+    if (confirm("Do you want to select this applicant?")) {
+      setError("");
+      setLoading(true);
+      const connectContract = new Contract(
+        CONTRACT_ADDRESS,
+        contractABI.abi,
+        provider?.getSigner()
+      );
+      const tx = await connectContract.startTask(taskID, applicantAddress);
+      if (!tx) {
+        setLoading(false);
+        setError("Some issue on the contract");
+        return;
+      }
+      provider!.once(tx.hash, async (tx) => {
+        setLoading(false);
+        setError("");
+        setStatus(2);
+        await axios(
+          "https://liwaiw1kuj.execute-api.ap-southeast-1.amazonaws.com"
+        ).put("/tasks/status", {
+          PK,
+          status: "started",
+        });
+        await axios(
+          "https://liwaiw1kuj.execute-api.ap-southeast-1.amazonaws.com"
+        ).put("/tasks/select/applicant", {
+          PK,
+          wallet: applicantAddress,
+        });
+      });
+    }
+  };
+  const submitTask = async () => {
+    if (confirm("Do you want to submit this task?")) {
+      setError("");
+      setLoading(true);
+      if (!attachment) {
+        setError("Please fill in the attachment link");
+      } else {
+        const connectContract = new Contract(
+          CONTRACT_ADDRESS,
+          contractABI.abi,
+          provider?.getSigner()
+        );
+        const tx = await connectContract.submitResult(taskID, attachment);
+        if (!tx) {
+          setLoading(false);
+          setError("Some issue on the contract");
+          return;
+        }
+        provider!.once(tx.hash, async (tx) => {
+          setLoading(false);
+          setError("");
+          setSubmission(attachment);
+        });
+      }
+    }
+  };
+  const approveTask = async () => {
+    if (confirm(`Do you want to approve this submission? (Rating: ${starSelect})`)) {
+      setError("");
+      setLoading(true);
+      const connectContract = new Contract(
+        CONTRACT_ADDRESS,
+        contractABI.abi,
+        provider?.getSigner()
+      );
+      const tx = await connectContract.setTaskCompleted(taskID, starSelect.toString(), comment);
+      if (!tx) {
+        setLoading(false);
+        setError("Some issue on the contract");
+        return;
+      }
+      provider!.once(tx.hash, async (tx) => {
+        setLoading(false);
+        setError("");
+      });
+    }
+  };
   return (
     <Transition.Root show={open} as={Fragment}>
       <Dialog
@@ -104,14 +354,14 @@ const TaskPopup: React.FC<TaskPopupProps> = ({ open, setOpen, hooks, tx, setLoad
                           aria-hidden="true"
                         />
                         <span className="font-bold text-lg inline-block align-middle ml-2 mt-1">
-                          6/8/2022
+                          {moment.unix(createTime).format("DD/MM/YYYY")}
                         </span>
                         <ClockIcon
                           className="h-7 w-7 text-black inline-block align-middle ml-4"
                           aria-hidden="true"
                         />
                         <span className="font-bold text-lg inline-block align-middle ml-2 mt-1">
-                          20 Days
+                          {duration} Day{duration > 1 && "s"}
                         </span>
                       </p>
                     </div>
@@ -128,16 +378,26 @@ const TaskPopup: React.FC<TaskPopupProps> = ({ open, setOpen, hooks, tx, setLoad
                     </div>
                   </div>
 
-                  <div className="bg-green overflow-hidden grid grid-cols-5 lg:gap-4 border-black border-b-2">
+                  <div
+                    className="overflow-hidden grid grid-cols-5 lg:gap-4 border-black border-b-2"
+                    style={{
+                      backgroundColor: get(
+                        colorMap,
+                        `[${jobFormat?.color}]`,
+                        "white"
+                      ),
+                    }}
+                  >
                     <div className="pt-10 pb-8 px-4 sm:pt-16 sm:px-8 lg:py-10 lg:pr-0 xl:py-8 col-span-4 mt-auto">
                       <div className="lg:self-center">
                         <h2 className="text-xl font-extrabold text-black sm:text-3xl">
                           <span className="block">
-                            Senior Contract Developer
+                            {get(jobDesc, "postName", "")}
                           </span>
                         </h2>
                         <p className="text-lg leading-6 text-black">
-                          Pancake Swap (Defi Protocol)
+                          {get(jobDesc, "companyName", "")} (
+                          {get(jobDesc, "companyType", "")})
                         </p>
                       </div>
                     </div>
@@ -158,7 +418,7 @@ const TaskPopup: React.FC<TaskPopupProps> = ({ open, setOpen, hooks, tx, setLoad
                             aria-hidden="true"
                           />
                           <span className="text-lg inline-block align-middle ml-2">
-                            {userView
+                            {get(tastDetail, "userView", 0)
                               .toString()
                               .replace(/\B(?=(\d{3})+(?!\d))/g, ",")}
                           </span>
@@ -167,7 +427,7 @@ const TaskPopup: React.FC<TaskPopupProps> = ({ open, setOpen, hooks, tx, setLoad
                             aria-hidden="true"
                           />
                           <span className="text-lg inline-block align-middle ml-2">
-                            {userBookmarked
+                            {get(tastDetail, "userBookmarked", 0)
                               .toString()
                               .replace(/\B(?=(\d{3})+(?!\d))/g, ",")}
                           </span>
@@ -178,51 +438,61 @@ const TaskPopup: React.FC<TaskPopupProps> = ({ open, setOpen, hooks, tx, setLoad
                             alt="polygon icon"
                           />
                           <span className="text-lg inline-block align-middle ml-2">
-                            {polyCost
-                              .toString()
-                              .replace(/\B(?=(\d{3})+(?!\d))/g, ",")}
+                            {formatEther(polyCost)}
                           </span>
                         </p>
-                        <p className="mt-2 text-center md:text-left">
-                          <button className="mr-2 mt-2 text-white font-bold text-sm border-black border-t-2 border-x-2 border-b-4 text-center rounded-lg py-1 px-2 bg-discord">
-                            <img
-                              src="/assets/icon/discord.svg"
-                              className="h-5 w-5 inline-block align-middle mr-1"
-                              aria-hidden="true"
-                              alt="discord icon"
-                            />{" "}
-                            Discord
-                          </button>
-                          <button className="mr-2 mt-2 text-white font-bold text-sm border-black border-t-2 border-x-2 border-b-4 text-center rounded-lg py-1 px-2 bg-telegram">
-                            <img
-                              src="/assets/icon/telegram.svg"
-                              className="h-5 w-5 inline-block align-middle mr-1"
-                              aria-hidden="true"
-                              alt="telegram icon"
-                            />{" "}
-                            Telegram
-                          </button>
-                          <button className="mr-2 mt-2 text-white font-bold text-sm border-black border-t-2 border-x-2 border-b-4 text-center rounded-lg py-1 px-2 bg-whatsapp">
-                            <img
-                              src="/assets/icon/whatsapp.svg"
-                              className="h-5 w-5 inline-block align-middle mr-1"
-                              aria-hidden="true"
-                              alt="telegram icon"
-                            />{" "}
-                            WhatsApp
-                          </button>
-                          <button className="mr-2 mt-2 text-white font-bold text-sm border-black border-t-2 border-x-2 border-b-4 text-center rounded-lg py-1 px-2 bg-signal">
-                            <img
-                              src="/assets/icon/signal.svg"
-                              className="h-5 w-5 inline-block align-middle mr-1"
-                              aria-hidden="true"
-                              alt="telegram icon"
-                            />{" "}
-                            Signal
-                          </button>
-                        </p>
+                        {status !== 0 &&
+                          (creator === wallet ||
+                            selectedApplicant === wallet) && (
+                            <p className="mt-2 text-center md:text-left">
+                              {get(jobDesc, "discord", "") && (
+                                <span className="mr-2 mt-2 text-white font-bold text-sm border-black border-t-2 border-x-2 border-b-4 text-center rounded-lg py-1 px-2 bg-discord">
+                                  <img
+                                    src="/assets/icon/discord.svg"
+                                    className="h-5 w-5 inline-block align-middle mr-1"
+                                    aria-hidden="true"
+                                    alt="discord icon"
+                                  />{" "}
+                                  {get(jobDesc, "discord", "")}
+                                </span>
+                              )}
+                              {get(jobDesc, "telegram", "") && (
+                                <span className="mr-2 mt-2 text-white font-bold text-sm border-black border-t-2 border-x-2 border-b-4 text-center rounded-lg py-1 px-2 bg-telegram">
+                                  <img
+                                    src="/assets/icon/telegram.svg"
+                                    className="h-5 w-5 inline-block align-middle mr-1"
+                                    aria-hidden="true"
+                                    alt="telegram icon"
+                                  />{" "}
+                                  {get(jobDesc, "telegram", "")}
+                                </span>
+                              )}
+                              {get(jobDesc, "whatsapp", "") && (
+                                <span className="mr-2 mt-2 text-white font-bold text-sm border-black border-t-2 border-x-2 border-b-4 text-center rounded-lg py-1 px-2 bg-whatsapp">
+                                  <img
+                                    src="/assets/icon/whatsapp.svg"
+                                    className="h-5 w-5 inline-block align-middle mr-1"
+                                    aria-hidden="true"
+                                    alt="whatsapp icon"
+                                  />{" "}
+                                  {get(jobDesc, "whatsapp", "")}
+                                </span>
+                              )}
+                              {get(jobDesc, "signal", "") && (
+                                <span className="mr-2 mt-2 text-white font-bold text-sm border-black border-t-2 border-x-2 border-b-4 text-center rounded-lg py-1 px-2 bg-signal">
+                                  <img
+                                    src="/assets/icon/signal.svg"
+                                    className="h-5 w-5 inline-block align-middle mr-1"
+                                    aria-hidden="true"
+                                    alt="signal icon"
+                                  />{" "}
+                                  {get(jobDesc, "signal", "")}
+                                </span>
+                              )}
+                            </p>
+                          )}
                         <div className="mt-4 text-center md:text-left">
-                          {stackList.map((item) => (
+                          {stackList.map((item: string) => (
                             <div
                               key={item}
                               className="inline-block px-3 text-base font-medium border-l-2 last:border-r-2 border-black"
@@ -232,126 +502,235 @@ const TaskPopup: React.FC<TaskPopupProps> = ({ open, setOpen, hooks, tx, setLoad
                           ))}
                         </div>
                       </div>
-                      <div className="text-center md:text-right">
-                        <div className="inline-block mr-2 border-black border-t-2 border-x-2 border-b-4 rounded-lg text-center w-20 h-24 font-bold py-4">
-                          <span className="text-4xl">01</span>
-                          <br />
-                          <span className="text-sm">Day</span>
-                        </div>
-                        <div className="inline-block mr-2 border-black border-t-2 border-x-2 border-b-4 rounded-lg text-center w-20 h-24 font-bold py-4">
-                          <span className="text-4xl">02</span>
-                          <br />
-                          <span className="text-sm">Hours</span>
-                        </div>
-                        <div className="inline-block mr-2 border-black border-t-2 border-x-2 border-b-4 rounded-lg text-center w-20 h-24 font-bold py-4">
-                          <span className="text-4xl">28</span>
-                          <br />
-                          <span className="text-sm">Mins</span>
-                        </div>
-                      </div>
+                      {status === 2 &&
+                        (creator === wallet ||
+                          selectedApplicant === wallet) && (
+                          <div className="text-center md:text-right">
+                            <div className="inline-block mr-2 border-black border-t-2 border-x-2 border-b-4 rounded-lg text-center w-20 h-24 font-bold py-4">
+                              <span className="text-4xl">
+                                {("00" + countDown.day).slice(-2)}
+                              </span>
+                              <br />
+                              <span className="text-sm">Day</span>
+                            </div>
+                            <div className="inline-block mr-2 border-black border-t-2 border-x-2 border-b-4 rounded-lg text-center w-20 h-24 font-bold py-4">
+                              <span className="text-4xl">
+                                {("00" + countDown.hour).slice(-2)}
+                              </span>
+                              <br />
+                              <span className="text-sm">Hours</span>
+                            </div>
+                            <div className="inline-block mr-2 border-black border-t-2 border-x-2 border-b-4 rounded-lg text-center w-20 h-24 font-bold py-4">
+                              <span className="text-4xl">
+                                {("00" + countDown.min).slice(-2)}
+                              </span>
+                              <br />
+                              <span className="text-sm">Mins</span>
+                            </div>
+                          </div>
+                        )}
                     </div>
                     <div className="mt-4">
                       <p className="text-sm text-black text-center md:text-left">
-                        {jobDescription}
+                        {get(jobDesc, "jobDescription", "")}
                       </p>
                     </div>
-                    <div className="mt-4">
-                      <p className="font-medium text-base text-black text-center md:text-left">
-                        Candidate
-                      </p>
+                    {creator === wallet && (
                       <div className="mt-4">
-                        <div className="flex w-full items-center">
-                          <div className="flex-shrink-1">
-                            <div className="w-4 h-4 rounded-full border-2 bg-yellow inline-block align-middle" />
-                            <div className="ml-4 text-xs sm:text-base font-bold inline-block align-middle">
-                              Tsek8Qye8ftzTr1tSPu5UwugbzjBgWtQXqm8moYMGxe
+                        <p className="font-bold text-base text-black text-center md:text-left">
+                          Candidate
+                        </p>
+                        {status === 0 ? (
+                          <div className="mt-4">
+                            {applicant.map((item: string) => (
+                              <div
+                                key={item}
+                                className="flex w-full items-center mb-2"
+                              >
+                                <div className="flex-shrink-1">
+                                  <div className="w-4 h-4 rounded-full border-2 bg-yellow inline-block align-middle" />
+                                  <div className="ml-4 text-xs sm:text-base font-bold inline-block align-middle">
+                                    {item}
+                                  </div>
+                                </div>
+                                <div className="flex-shrink-0 ml-auto">
+                                  <div className="w-36 grid grid-cols-2 gap-2">
+                                    <div className="col-span-1">
+                                      <button className="border-black border-t-2 border-b-4 border-x-2 rounded-lg font-bold w-full py-1">
+                                        View
+                                      </button>
+                                    </div>
+                                    <div className="col-span-1">
+                                      <button
+                                        onClick={() => selectApplicant(item)}
+                                        className="border-black border-t-2 border-b-4 border-x-2 rounded-lg font-bold w-full py-1"
+                                      >
+                                        Select
+                                      </button>
+                                    </div>
+                                  </div>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        ) : (
+                          <div className="flex w-full items-center mb-2">
+                            <div className="flex-shrink-1">
+                              <div className="w-4 h-4 rounded-full border-2 bg-yellow inline-block align-middle" />
+                              <div className="ml-4 text-xs sm:text-base font-bold inline-block align-middle">
+                                {selectedApplicant}
+                              </div>
+                            </div>
+                            <div className="flex-shrink-0 ml-auto">
+                              <div className="w-36 grid grid-cols-2 gap-2">
+                                <div className="col-span-2">
+                                  <button className="border-black border-t-2 border-b-4 border-x-2 rounded-lg font-bold w-full py-1">
+                                    View
+                                  </button>
+                                </div>
+                              </div>
                             </div>
                           </div>
-                          <div className="flex-shrink-0 ml-auto">
-                            <div className="w-28 grid grid-cols-2 gap-2">
-                              <div className="col-span-1">
-                                <button className="border-black border-t-2 border-b-4 border-x-2 rounded-lg font-bold w-full py-1">
-                                  View
-                                </button>
+                        )}
+                      </div>
+                    )}
+                    {status === 2 && selectedApplicant === wallet && (
+                      <div className="mt-4">
+                        <p className="font-bold text-base text-black text-center md:text-left">
+                          Submission Attachment
+                        </p>
+                        <textarea
+                          rows={1}
+                          className="focus:outline-none text-sm border-black border-t-2 border-x-2 border-b-4 rounded-lg w-full px-4 py-2 mt-2 placeholder:text-black placeholder:font-medium"
+                          placeholder="Submission Attachment"
+                          value={submission || attachment}
+                          onChange={(e) => setAttachment(e.target.value)}
+                        ></textarea>
+                        {/* <div className="mt-2">
+                            <Dropzone
+                              onError={(newError) => setError(newError)}
+                              value={attachment}
+                              onChange={(newFile) => setAttachment(newFile)}
+                            />
+                          </div> */}
+                      </div>
+                    )}
+                    {status === 2 && creator === wallet && (
+                      <div className="mt-4">
+                        <p className="font-bold text-base text-black text-center md:text-left">
+                          Submission Attachment
+                        </p>
+                        <p className="text-black text-sm border-black border-t-2 border-x-2 border-b-4 rounded-lg w-full px-4 py-2 mt-2">
+                          {submission || "Not Yet Submitted"}
+                        </p>
+                      </div>
+                    )}
+                    {status === 2 && creator === wallet && submission && (
+                      <div className="mt-4">
+                        <p className="font-bold text-base text-black text-center md:text-left">
+                          Rating
+                        </p>
+                        <div className="mt-2 cursor-pointer text-center md:text-left">
+                          {Array.from(Array(totalStar), (e, i) => {
+                            return (
+                              <div
+                                key={e}
+                                onMouseEnter={() => setStarHover(i + 1)}
+                                onMouseLeave={() => setStarHover(0)}
+                                onClick={() => setStarSelect(i + 1)}
+                                className={classNames(
+                                  "w-7 h-7 inline-block mr-2 star-wrapper",
+                                  i < starHover && "hover",
+                                  i < starSelect && "hover"
+                                )}
+                              >
+                                <StarIcon className="w-6 h-6 star" />
+                                <StarCheckedIcon className="w-6 h-6 star-checked" />
                               </div>
-                              <div className="col-span-1">
-                                <button className="border-black border-t-2 border-b-4 border-x-2 rounded-lg font-bold w-full py-1">
-                                  Select
-                                </button>
-                              </div>
-                            </div>
-                          </div>
+                            );
+                          })}
+                        </div>
+                        <div className="mt-1">
+                          <input
+                            type="text"
+                            placeholder="Comment"
+                            value={comment}
+                            onChange={(e) => setComment(e.target.value)}
+                            className="focus:outline-none text-sm border-black border-t-2 border-x-2 border-b-4 rounded-lg w-full px-4 py-2 mt-2 placeholder:text-black placeholder:font-medium"
+                          />
                         </div>
                       </div>
-                    </div>
-                    <div className="mt-4">
-                      <p className="font-medium text-base text-black text-center md:text-left">
-                        Submission Attachment
-                      </p>
-                      <textarea
-                        rows={1}
-                        className="focus:outline-none text-sm border-black border-t-2 border-x-2 border-b-4 rounded-lg w-full px-4 py-2 mt-2 placeholder:text-black placeholder:font-medium"
-                        placeholder="Attachment Description"
-                      ></textarea>
-                      <div className="mt-2">
-                        <Dropzone
-                          onError={(newError) => setError(newError)}
-                          value={attachment}
-                          onChange={(newFile) => setAttachment(newFile)}
-                        />
-                      </div>
-                    </div>
-                    <div className="mt-4">
-                      <p className="font-medium text-base text-black text-center md:text-left">
-                        Rating
-                      </p>
-                      <div className="mt-2 cursor-pointer text-center md:text-left">
-                        {Array.from(Array(totalStar), (e, i) => {
-                          return (
-                            <div
-                              key={e}
-                              onMouseEnter={() => setStarHover(i + 1)}
-                              onMouseLeave={() => setStarHover(0)}
-                              onClick={() => setStarSelect(i + 1)}
-                              className={classNames(
-                                "w-7 h-7 inline-block mr-2 star-wrapper",
-                                i < starHover && "hover",
-                                i < starSelect && "hover"
-                              )}
-                            >
-                              <StarIcon className="w-6 h-6 star" />
-                              <StarCheckedIcon className="w-6 h-6 star-checked" />
-                            </div>
-                          );
-                        })}
-                      </div>
-                      <div className="mt-1">
-                        <input
-                          type="text"
-                          placeholder="Comment"
-                          className="focus:outline-none text-sm border-black border-t-2 border-x-2 border-b-4 rounded-lg w-full px-4 py-2 mt-2 placeholder:text-black placeholder:font-medium"
-                        />
-                      </div>
-                    </div>
+                    )}
+                    {error && <p className="w-full mt-4">{error}</p>}
                     <div className="w-full mt-4">
+                      {creator === wallet && status === 0 && (
+                        <button className="bg-red font-bold text-sm border-black border-t-2 border-x-2 border-b-4 text-center rounded-lg py-1 px-12">
+                          Cancel Task
+                        </button>
+                      )}
+                      {creator === wallet && status === 2 && (
+                        <>
+                          {submission ? (
+                            <button
+                              onClick={() => approveTask()}
+                              className="bg-green font-bold text-sm border-black border-t-2 border-x-2 border-b-4 text-center rounded-lg py-1 px-12"
+                            >
+                              Approve Task
+                            </button>
+                          ) : (
+                            <button className="cursor-not-allowed bg-gray font-bold text-sm border-black border-t-2 border-x-2 border-b-4 text-center rounded-lg py-1 px-12">
+                              Cancel Task
+                            </button>
+                          )}
+                        </>
+                      )}
+                      {selectedApplicant === wallet && status === 2 && (
+                        <>
+                          {submission ? (
+                            <button className="cursor-not-allowed bg-gray font-bold text-sm border-black border-t-2 border-x-2 border-b-4 text-center rounded-lg py-1 px-12">
+                              Submit Task
+                            </button>
+                          ) : (
+                            <button
+                              onClick={() => submitTask()}
+                              className="bg-green font-bold text-sm border-black border-t-2 border-x-2 border-b-4 text-center rounded-lg py-1 px-12"
+                            >
+                              Submit Task
+                            </button>
+                          )}
+                        </>
+                      )}
+                      {creator !== wallet && status === 0 && (
+                        <>
+                          {applicant.includes(wallet) ? (
+                            <button
+                              onClick={() => withdrawApplication()}
+                              className="bg-red font-bold text-sm border-black border-t-2 border-x-2 border-b-4 text-center rounded-lg py-1 px-12"
+                            >
+                              Withdraw Application
+                            </button>
+                          ) : (
+                            <button
+                              onClick={() => applyApplication()}
+                              className="font-bold text-sm border-black border-t-2 border-x-2 border-b-4 text-center rounded-lg py-1 px-12"
+                            >
+                              Apply Now
+                            </button>
+                          )}
+                        </>
+                      )}
                       {/* <button className="font-bold text-sm border-black border-t-2 border-x-2 border-b-4 text-center rounded-lg py-1 px-12">
                     Apply Now
                   </button>
                   <button className="font-bold text-sm border-black border-t-2 border-x-2 border-b-4 text-center rounded-lg py-1 px-12 ml-4">
                     Bookmark
                   </button> */}
-                      {/* <button className="bg-red font-bold text-sm border-black border-t-2 border-x-2 border-b-4 text-center rounded-lg py-1 px-12">
-                        Cancel Task
-                      </button>
-                      <button className="bg-green font-bold text-sm border-black border-t-2 border-x-2 border-b-4 text-center rounded-lg py-1 px-12 ml-4">
-                        Submit Task
-                      </button> */}
-                      <button className="cursor-not-allowed bg-gray font-bold text-sm border-black border-t-2 border-x-2 border-b-4 text-center rounded-lg py-1 px-12">
+                      {/* <button className="cursor-not-allowed bg-gray font-bold text-sm border-black border-t-2 border-x-2 border-b-4 text-center rounded-lg py-1 px-12">
                         Cancel Task
                       </button>
                       <button className="cursor-not-allowed bg-gray font-bold text-sm border-black border-t-2 border-x-2 border-b-4 text-center rounded-lg py-1 px-12 ml-4">
                         Submit Task
-                      </button>
+                      </button> */}
                     </div>
                   </div>
                 </div>
