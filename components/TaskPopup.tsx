@@ -98,11 +98,10 @@ const TaskPopup: React.FC<TaskPopupProps> = ({
           provider?.getSigner()
         );
         const result = await connectContract.tasks(taskID);
-        console.log(result);
         const tempCreator = get(result, "creator", "").toString();
         const tempStatus = get(result, "status", 0);
         const address = get(accounts, "[0]", "");
-        setPolyCost(get(result, "salary", 0).toString());
+        // setPolyCost(get(result, "salary", 0).toString());
         setCreateTime(get(result, "createdTime", 0).toString());
         setStartTime(get(result, "startTime", 0).toString());
         setDuration(get(result, "duration", 0).toString());

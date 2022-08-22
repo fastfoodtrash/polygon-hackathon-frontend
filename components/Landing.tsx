@@ -64,7 +64,7 @@ const JobPage: NextPage = () => {
     const tempData = get(response, "data.data", []);
     setData(tempData);
     setLoading(false);
-  }
+  };
 
   useEffect(() => {
     fetchData();
@@ -164,7 +164,8 @@ const JobPage: NextPage = () => {
   }, [data, bookmark, all, accounts, filter, search]);
 
   const taskDetailOpen = (item: any) => {
-    setTaskID(get(item, "taskID", ""));
+    console.log(item);
+    setTaskID(get(item, "taskID", "").toString());
     setPK(get(item, "PK", ""));
     setTaskDetail({
       userBookmarked: get(item, "bookmark", []).length,
@@ -183,35 +184,43 @@ const JobPage: NextPage = () => {
 
       <div className="App">
         <LoadingBar open={loading} />
-        <TaskPopup
-          taskID={taskID}
-          hooks={hooks}
-          open={taskOpen}
-          setOpen={setTaskOpen}
-          setLoading={setLoading}
-          tastDetail={tastDetail}
-          PK={PK}
-        />
-        <NamecardPopup
-          address={get(accounts, "[0]", "")}
-          hooks={hooks}
-          type={nameCardType}
-          open={namecardOpen}
-          setOpen={setNamecardOpen}
-          setLoading={setLoading}
-        />
-        <FriendPopup
-          setLoading={setLoading}
-          hooks={hooks}
-          open={friendOpen}
-          setOpen={setFriendOpen}
-        />
-        <AddTaskPopup
-          hooks={hooks}
-          open={addTaskOpen}
-          setOpen={setAddTaskOpen}
-          setLoading={setLoading}
-        />
+        {taskOpen && (
+          <TaskPopup
+            taskID={taskID}
+            hooks={hooks}
+            open={taskOpen}
+            setOpen={setTaskOpen}
+            setLoading={setLoading}
+            tastDetail={tastDetail}
+            PK={PK}
+          />
+        )}
+        {namecardOpen && (
+          <NamecardPopup
+            address={get(accounts, "[0]", "")}
+            hooks={hooks}
+            type={nameCardType}
+            open={namecardOpen}
+            setOpen={setNamecardOpen}
+            setLoading={setLoading}
+          />
+        )}
+        {friendOpen && (
+          <FriendPopup
+            setLoading={setLoading}
+            hooks={hooks}
+            open={friendOpen}
+            setOpen={setFriendOpen}
+          />
+        )}
+        {addTaskOpen && (
+          <AddTaskPopup
+            hooks={hooks}
+            open={addTaskOpen}
+            setOpen={setAddTaskOpen}
+            setLoading={setLoading}
+          />
+        )}
         <NavBar
           connect={() => connectWallet(true)}
           disconnect={() => connectWallet(false)}

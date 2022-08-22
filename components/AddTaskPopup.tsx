@@ -13,6 +13,7 @@ import { jobTypeOptions, stackTypeOptions } from "../data/options";
 import CONTRACT_ADDRESS from "../contract/service";
 import contractABI from "../contract/TasksV1.json";
 import axios from "../utils/service";
+import moment from "moment";
 
 interface AddTaskPopupProps {
   open: boolean;
@@ -168,6 +169,7 @@ const AddTaskPopup: React.FC<AddTaskPopupProps> = ({
           })
         );
         // Contract
+        const referenceCode = moment().unix();
         const connectContract = new Contract(
           CONTRACT_ADDRESS,
           contractABI.abi,
@@ -176,6 +178,7 @@ const AddTaskPopup: React.FC<AddTaskPopupProps> = ({
         const tx = await connectContract.createTask(
           get(description, "jobDuration", ""),
           get(ipfs, "data.url", ""),
+          referenceCode.toString(),
           { value: parseEther(salary).toString() }
         );
         if (!tx) {
