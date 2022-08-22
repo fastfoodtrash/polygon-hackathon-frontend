@@ -376,6 +376,35 @@ const TaskPopup: React.FC<TaskPopupProps> = ({
       }
     }
   };
+  const cancelTask = async () => {
+    if (confirm("Do you want to cancel this task?")) {
+      setError("");
+      setLoading(true);
+      const connectContract = new Contract(
+        CONTRACT_ADDRESS,
+        contractABI.abi,
+        provider?.getSigner()
+      );
+      const tx = await connectContract.cancelTask(taskID);
+      if (!tx) {
+        setLoading(false);
+        setError("Some issue on the contract");
+        return;
+      }
+      provider!.once(tx.hash, async (tx) => {
+        await axios(
+          "https://liwaiw1kuj.execute-api.ap-southeast-1.amazonaws.com"
+        ).put("/tasks/status", {
+          PK,
+          status: "failed",
+        });
+        setLoading(false);
+        setError("");
+        setStatus(1);
+        setOpen(false);
+      });
+    }
+  };
   return (
     <Transition.Root show={open} as={Fragment}>
       <Dialog
@@ -814,7 +843,10 @@ const TaskPopup: React.FC<TaskPopupProps> = ({
                     {error && <p className="w-full mt-4">{error}</p>}
                     <div className="w-full mt-4">
                       {creator === wallet && status === 0 && (
-                        <button className="bg-red font-bold text-sm border-black border-t-2 border-x-2 border-b-4 text-center rounded-lg py-1 px-12">
+                        <button
+                          onClick={() => cancelTask()}
+                          className="bg-red font-bold text-sm border-black border-t-2 border-x-2 border-b-4 text-center rounded-lg py-1 px-12"
+                        >
                           Cancel Task
                         </button>
                       )}

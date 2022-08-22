@@ -38,13 +38,13 @@ const JobPage: NextPage = () => {
   const [filter, setFilter] = useState("All");
   const [bookmark, setBookmark] = useState(false);
   const [all, setAll] = useState(true);
-  const [taskOpen, setTaskOpen] = useState(true);
+  const [taskOpen, setTaskOpen] = useState(false);
   const [namecardOpen, setNamecardOpen] = useState(false);
   const [nameCardType, setNamecardType] = useState<"resume" | "namecard">(
     "resume"
   );
   const [friendOpen, setFriendOpen] = useState(false);
-  const [addTaskOpen, setAddTaskOpen] = useState(false);
+  const [addTaskOpen, setAddTaskOpen] = useState(true);
   const [data, setData] = useState([]);
 
   const [taskID, setTaskID] = useState("8");

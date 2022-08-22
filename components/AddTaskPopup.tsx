@@ -65,18 +65,18 @@ const AddTaskPopup: React.FC<AddTaskPopupProps> = ({
 
   const [user, setUser] = useState({ name: "", wallet: "" });
   // const [salary, setSalary] = useState("0.01");
-  const [salary, setSalary] = useState("");
-  const [description, setDescription] = useState({});
-  // const [description, setDescription] = useState({
-  //   companyName: "Company Name",
-  //   companyType: "Company Type",
-  //   postName: "Post Name",
-  //   jobDuration: "20",
-  //   jobType: { value: "Frontend", label: "Frontend" },
-  //   stacks: [{ label: "React", value: "React" }],
-  //   jobDescription: "Sample Description",
-  //   discord: "@samsek",
-  // });
+  const [salary, setSalary] = useState("0.01");
+  // const [description, setDescription] = useState({});
+  const [description, setDescription] = useState({
+    companyName: "Company Name",
+    companyType: "Company Type",
+    postName: "Post Name",
+    jobDuration: "20",
+    jobType: { value: "Frontend", label: "Frontend" },
+    stacks: [{ label: "React", value: "React" }],
+    jobDescription: "Sample Description",
+    discord: "@samsek",
+  });
   const [error, setError] = useState("");
 
   const cancelButtonRef = useRef(null);
