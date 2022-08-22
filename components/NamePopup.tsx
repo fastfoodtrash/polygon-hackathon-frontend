@@ -1,4 +1,4 @@
-import { Fragment, useRef, useEffect, useState } from "react";
+import { Fragment, useRef, useEffect, useState, useMemo } from "react";
 import { Dialog, Transition } from "@headlessui/react";
 import { XIcon } from "@heroicons/react/solid";
 import { Web3ReactHooks } from "@web3-react/core";
@@ -58,6 +58,14 @@ const NamecardPopup: React.FC<NamecardPopupProps> = ({
     }
     fetchData();
   }, [setLoading, provider, address]);
+
+  const earning = useMemo(() => {
+    let earn = 0;
+    data.map((item: any) => {
+      earn += parseFloat(item.salary)
+    })
+    return earn;
+  }, [data]);
   return (
     <Transition.Root show={open} as={Fragment}>
       <Dialog
@@ -142,7 +150,7 @@ const NamecardPopup: React.FC<NamecardPopupProps> = ({
                               className="inline-block h-7 w-7 align-middle"
                               aria-hidden="true"
                             />{" "}
-                            250 Polygon Earned
+                            {earning} Polygon Earned
                           </p>
                         </div>
                       </div>
@@ -177,7 +185,7 @@ const NamecardPopup: React.FC<NamecardPopupProps> = ({
                       </div>
                     </div>
                   )}
-                  <div className="px-6 pb-4">
+                  {/* <div className="px-6 pb-4">
                     <div className="w-full mt-4">
                       <button className="mb-2 mr-2 bg-twitter text-white font-bold text-sm border-black border-t-2 border-x-2 border-b-4 text-center rounded-lg py-1 px-4">
                         <img
@@ -207,7 +215,7 @@ const NamecardPopup: React.FC<NamecardPopupProps> = ({
                         Share
                       </button>
                     </div>
-                  </div>
+                  </div> */}
                 </div>
               </Dialog.Panel>
             </Transition.Child>

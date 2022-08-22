@@ -176,7 +176,7 @@ const JobPage: NextPage = () => {
   return (
     <div>
       <Head>
-        <title>BYOB</title>
+        <title>BYOB - Your Web3 Job Board</title>
         <meta name="description" content="Find and create task" />
         <link rel="icon" href="/favicon.ico" />
       </Head>
