@@ -1,17 +1,111 @@
-import { Fragment, useRef, useState } from 'react';
-import { Dialog, Transition } from '@headlessui/react';
-import { XIcon, CheckIcon } from '@heroicons/react/solid';
+import { Fragment, useEffect, useMemo, useRef, useState } from "react";
+import { Dialog, Transition } from "@headlessui/react";
+import { XIcon, CheckIcon } from "@heroicons/react/solid";
+import { Web3ReactHooks } from "@web3-react/core";
 
-import FriendTabBar from './FriendTabBar';
+import { get, set } from "lodash";
+
+import FriendTabBar from "./FriendTabBar";
+import axios from "../utils/service";
+import { isAddress } from "ethers/lib/utils";
 
 interface FriendPopupProps {
   open: boolean;
+  hooks: Web3ReactHooks;
   setOpen: (value: boolean) => void;
+  setLoading: (newValue: boolean) => void;
 }
 
-const FriendPopup: React.FC<FriendPopupProps> = ({ open, setOpen }) => {
-  const [filter, setFilter] = useState('All');
+const FriendPopup: React.FC<FriendPopupProps> = ({
+  open,
+  setOpen,
+  hooks,
+  setLoading,
+}) => {
+  const { useAccounts } = hooks;
+  const accounts = useAccounts();
+
+  const [filter, setFilter] = useState("All");
+  const [data, setData] = useState([]);
+  const [friendWallet, setFriendWallet] = useState("");
+  const [error, setError] = useState("");
   const cancelButtonRef = useRef(null);
+
+  useEffect(() => {
+    async function fetchData() {
+      setLoading(true);
+      const response = await axios(
+        "https://liwaiw1kuj.execute-api.ap-southeast-1.amazonaws.com"
+      ).get("/friends", { params: { wallet: get(accounts, "[0]", "") } });
+      const tempData = get(response, "data.data", []);
+      setData(tempData);
+      setLoading(false);
+    }
+    fetchData();
+  }, [setLoading, accounts]);
+
+  const filterData = useMemo(() => {
+    let tempData = Object.assign([], data);
+    if (filter !== "All") {
+      if (filter === "Friends") {
+        tempData = tempData.filter((item: any) => item.status === "accepted");
+      } else {
+        tempData = tempData.filter((item: any) => item.status === "pending");
+      }
+    } else {
+      tempData = tempData.filter((item: any) => item.status !== "rejected");
+    }
+    return tempData;
+  }, [data, accounts, filter]);
+
+  const wallet = useMemo(() => {
+    return get(accounts, "[0]", "");
+  }, [accounts]);
+
+  const updateState = async (PK: string, status: string) => {
+    const tempData = Object.assign([], data);
+    const index = tempData.findIndex((item: any) => item.PK === PK);
+    console.log(index);
+    if (index > -1) {
+      set(tempData, `[${index}].status`, status);
+    }
+    setData(tempData);
+    await axios(
+      "https://liwaiw1kuj.execute-api.ap-southeast-1.amazonaws.com"
+    ).put("/friends", {
+      PK,
+      status,
+    });
+  };
+
+  const connectWallet = async () => {
+    setError("");
+    if (!isAddress(friendWallet)) {
+      setError("Your address format invalid");
+    } else {
+      setLoading(true);
+      const result = await axios(
+        "https://liwaiw1kuj.execute-api.ap-southeast-1.amazonaws.com"
+      ).post("/friends", {
+        friendWallet,
+        wallet: get(accounts, "[0]", ""),
+      });
+      if (result.data.status === 'success') {
+        const tempData: any = Object.assign([], data);
+        tempData.push({
+          PK: 'brandNew',
+          status: 'pending',
+          friendWallet,
+          wallet: get(accounts, "[0]", ""),
+        });
+        setData(tempData);
+        setFriendWallet('');
+      }
+      setError("");
+      setLoading(false);
+    }
+  };
+
   return (
     <Transition.Root show={open} as={Fragment}>
       <Dialog
@@ -70,7 +164,7 @@ const FriendPopup: React.FC<FriendPopupProps> = ({ open, setOpen }) => {
                     <div className="pt-10 pb-8 px-4 sm:pt-16 sm:px-16 lg:py-10 lg:pr-0 xl:py-8 col-span-4 my-auto">
                       <div className="lg:self-center">
                         <h2 className="font-extrabold text-black text-6xl">
-                          <span className="block">Polypeeps</span>
+                          <span className="block truncate">Add Friends</span>
                         </h2>
                       </div>
                     </div>
@@ -87,62 +181,93 @@ const FriendPopup: React.FC<FriendPopupProps> = ({ open, setOpen }) => {
                       <input
                         type="text"
                         placeholder="Polygon Address"
+                        value={friendWallet}
+                        onChange={(e) => setFriendWallet(e.target.value)}
                         className="focus:outline-none text-sm w-full placeholder:text-black placeholder:font-medium"
                       />
-                      <button className="font-medium py-1 px-2 bg-yellow rounded-lg border-black border-x-2 border-t-2 border-b-4">
+                      <button
+                        onClick={() => connectWallet()}
+                        className="font-medium py-1 px-2 bg-yellow rounded-lg border-black border-x-2 border-t-2 border-b-4"
+                      >
                         Connect
                       </button>
                     </div>
+                    {error && (
+                      <div className="mt-2">
+                        <p className="text-red">{error}</p>
+                      </div>
+                    )}
                     <div className="mt-4">
                       <FriendTabBar
-                        itemList={['All', 'Friends', 'Pending']}
+                        itemList={["All", "Friends", "Pending"]}
                         value={filter}
                         onChange={(newValue) => setFilter(newValue)}
                       />
                     </div>
-                    <div className="mt-4">
-                      <div className="flex w-full items-center">
-                        <div className="flex-shrink-1">
-                          <div className="w-4 h-4 rounded-full border-2 bg-yellow inline-block align-middle" />
-                          <div className="ml-4 text-xs sm:text-base font-bold inline-block align-middle">
-                            Tsek8Qye8ftzTr1tSPu5UwugbzjBgWtQXqm8moYMGxe
+                    {filterData.map((item: any) => (
+                      <div key={item.PK} className="mt-4">
+                        <div className="flex w-full items-center">
+                          <div className="flex-shrink-1">
+                            <div className="w-4 h-4 rounded-full border-2 bg-yellow inline-block align-middle" />
+                            <div className="ml-4 text-xs sm:text-base font-bold inline-block align-middle">
+                              {item.wallet === wallet
+                                ? item.friendWallet
+                                : item.wallet}
+                            </div>
                           </div>
-                        </div>
-                        <div className="flex-shrink-0 ml-auto">
-                          <div className="w-20 grid grid-cols-2 gap-4">
-                            <div className="col-span-2">
-                              <button className="border-black border-t-2 border-b-4 border-x-2 rounded-lg font-bold w-full py-1">
-                                View
-                              </button>
+                          <div className="flex-shrink-0 ml-auto">
+                            <div className="w-20 grid grid-cols-2 gap-4">
+                              {item.status === "pending" &&
+                                item.friendWallet === wallet && (
+                                  <>
+                                    <div className="col-span-1">
+                                      <button
+                                        onClick={() =>
+                                          updateState(item.PK, "accepted")
+                                        }
+                                        className="text-center bg-success border-black border-t-2 border-b-4 border-x-2 rounded-lg font-bold w-full py-1"
+                                      >
+                                        <CheckIcon
+                                          className="mx-auto h-4 w-4"
+                                          aria-hidden="true"
+                                        />
+                                      </button>
+                                    </div>
+                                    <div className="col-span-1">
+                                      <button
+                                        onClick={() =>
+                                          updateState(item.PK, "rejected")
+                                        }
+                                        className="text-center bg-fail border-black border-t-2 border-b-4 border-x-2 rounded-lg font-bold w-full py-1"
+                                      >
+                                        <XIcon
+                                          className="mx-auto h-4 w-4"
+                                          aria-hidden="true"
+                                        />
+                                      </button>
+                                    </div>
+                                  </>
+                                )}
+                              {item.status === "accepted" && (
+                                <div className="col-span-2">
+                                  <button className="border-black border-t-2 border-b-4 border-x-2 rounded-lg font-bold w-full py-1">
+                                    View
+                                  </button>
+                                </div>
+                              )}
+                              {item.status === "pending" &&
+                                item.wallet === wallet && (
+                                  <div className="col-span-2">
+                                    <button className="border-black border-t-2 border-b-4 border-x-2 rounded-lg font-bold w-full py-1">
+                                      View
+                                    </button>
+                                  </div>
+                                )}
                             </div>
                           </div>
                         </div>
                       </div>
-                    </div>
-                    <div className="mt-4">
-                      <div className="flex w-full items-center">
-                        <div className="flex-shrink-1">
-                          <div className="w-4 h-4 rounded-full border-2 bg-yellow inline-block align-middle" />
-                          <div className="ml-4 text-xs sm:text-base font-bold inline-block align-middle">
-                            Tsek8Qye8ftzTr1tSPu5UwugbzjBgWtQXqm8moYMGxe
-                          </div>
-                        </div>
-                        <div className="flex-shrink-0 ml-auto">
-                          <div className="w-20 grid grid-cols-2 gap-4">
-                            <div className="col-span-1">
-                              <button className="text-center bg-success border-black border-t-2 border-b-4 border-x-2 rounded-lg font-bold w-full py-1">
-                                <CheckIcon className="mx-auto h-4 w-4" aria-hidden="true" />
-                              </button>
-                            </div>
-                            <div className="col-span-1">
-                              <button className="text-center bg-fail border-black border-t-2 border-b-4 border-x-2 rounded-lg font-bold w-full py-1">
-                                <XIcon className="mx-auto h-4 w-4" aria-hidden="true" />
-                              </button>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
+                    ))}
                   </div>
                 </div>
               </Dialog.Panel>

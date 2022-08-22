@@ -1,26 +1,45 @@
-import { Fragment, useRef, useState } from 'react';
-import { Dialog, Transition } from '@headlessui/react';
-import classNames from 'classnames';
-import { XIcon } from '@heroicons/react/solid';
+import { Fragment, useEffect, useRef, useState } from "react";
+import { Dialog, Transition } from "@headlessui/react";
+import classNames from "classnames";
+import { Web3ReactHooks } from "@web3-react/core";
+import { XIcon } from "@heroicons/react/solid";
 import {
   BookmarkIcon,
   CalendarIcon,
   ClockIcon,
   UserIcon,
   StarIcon,
-} from '@heroicons/react/outline';
+} from "@heroicons/react/outline";
 
-import { StarIcon as StarCheckedIcon } from '@heroicons/react/solid';
+import { StarIcon as StarCheckedIcon } from "@heroicons/react/solid";
 
-import Dropzone from '../components/Dropzone';
+import { Contract } from "ethers";
+import { BigNumber } from "@ethersproject/bignumber";
+import { formatEther, parseEther } from "@ethersproject/units";
+import { get, set } from "lodash";
+
+import Dropzone from "../components/Dropzone";
+import CONTRACT_ADDRESS from "../contract/service";
+import contractABI from "../contract/TasksV1.json";
 
 interface TaskPopupProps {
   open: boolean;
+  hooks: Web3ReactHooks;
+  tx?: string;
   setOpen: (value: boolean) => void;
+  setLoading: (newValue: boolean) => void;
 }
 
-const TaskPopup: React.FC<TaskPopupProps> = ({ open, setOpen }) => {
-  const [error, setError] = useState('');
+const TaskPopup: React.FC<TaskPopupProps> = ({ open, setOpen, hooks, tx, setLoading }) => {
+  const { useProvider, useAccounts, useENSNames } = hooks;
+
+  const provider = useProvider();
+  const ENSNames = useENSNames(provider);
+  const accounts = useAccounts();
+
+  const [user, setUser] = useState({ name: "", wallet: "" });
+
+  const [error, setError] = useState("");
   const [starHover, setStarHover] = useState(0);
   const [starSelect, setStarSelect] = useState(0);
 
@@ -31,9 +50,19 @@ const TaskPopup: React.FC<TaskPopupProps> = ({ open, setOpen }) => {
   const userView = 1234;
   const userBookmarked = 1234;
   const polyCost = 1000;
-  const stackList = ['React JS', 'Node JS', 'MongoDB'];
+  const stackList = ["React JS", "Node JS", "MongoDB"];
   const jobDescription =
-    'Coins.ph is on a mission to create an open financial system by providing everyone easy access to Web3 and digital assets. A regulated entity, Coins is the most established crypto brand in the Philippines and has gained the trust of more than 16 million users. Through the easy-to-use mobile app, users can buy and sell a variety of different cryptocurrencies and also access a wide range of payment services.';
+    "Coins.ph is on a mission to create an open financial system by providing everyone easy access to Web3 and digital assets. A regulated entity, Coins is the most established crypto brand in the Philippines and has gained the trust of more than 16 million users. Through the easy-to-use mobile app, users can buy and sell a variety of different cryptocurrencies and also access a wide range of payment services.";
+  useEffect(() => {
+    async function fetchData() {
+      const connectContract = new Contract(
+        CONTRACT_ADDRESS,
+        contractABI.abi,
+        provider?.getSigner()
+      );
+    }
+    fetchData();
+  }, [tx]);
   return (
     <Transition.Root show={open} as={Fragment}>
       <Dialog
@@ -131,7 +160,7 @@ const TaskPopup: React.FC<TaskPopupProps> = ({ open, setOpen }) => {
                           <span className="text-lg inline-block align-middle ml-2">
                             {userView
                               .toString()
-                              .replace(/\B(?=(\d{3})+(?!\d))/g, ',')}
+                              .replace(/\B(?=(\d{3})+(?!\d))/g, ",")}
                           </span>
                           <BookmarkIcon
                             className="h-6 w-6 text-black inline-block align-middle ml-8"
@@ -140,7 +169,7 @@ const TaskPopup: React.FC<TaskPopupProps> = ({ open, setOpen }) => {
                           <span className="text-lg inline-block align-middle ml-2">
                             {userBookmarked
                               .toString()
-                              .replace(/\B(?=(\d{3})+(?!\d))/g, ',')}
+                              .replace(/\B(?=(\d{3})+(?!\d))/g, ",")}
                           </span>
                           <img
                             src="/assets/icon/polygon.svg"
@@ -151,7 +180,7 @@ const TaskPopup: React.FC<TaskPopupProps> = ({ open, setOpen }) => {
                           <span className="text-lg inline-block align-middle ml-2">
                             {polyCost
                               .toString()
-                              .replace(/\B(?=(\d{3})+(?!\d))/g, ',')}
+                              .replace(/\B(?=(\d{3})+(?!\d))/g, ",")}
                           </span>
                         </p>
                         <p className="mt-2 text-center md:text-left">
@@ -161,7 +190,7 @@ const TaskPopup: React.FC<TaskPopupProps> = ({ open, setOpen }) => {
                               className="h-5 w-5 inline-block align-middle mr-1"
                               aria-hidden="true"
                               alt="discord icon"
-                            />{' '}
+                            />{" "}
                             Discord
                           </button>
                           <button className="mr-2 mt-2 text-white font-bold text-sm border-black border-t-2 border-x-2 border-b-4 text-center rounded-lg py-1 px-2 bg-telegram">
@@ -170,7 +199,7 @@ const TaskPopup: React.FC<TaskPopupProps> = ({ open, setOpen }) => {
                               className="h-5 w-5 inline-block align-middle mr-1"
                               aria-hidden="true"
                               alt="telegram icon"
-                            />{' '}
+                            />{" "}
                             Telegram
                           </button>
                           <button className="mr-2 mt-2 text-white font-bold text-sm border-black border-t-2 border-x-2 border-b-4 text-center rounded-lg py-1 px-2 bg-whatsapp">
@@ -179,7 +208,7 @@ const TaskPopup: React.FC<TaskPopupProps> = ({ open, setOpen }) => {
                               className="h-5 w-5 inline-block align-middle mr-1"
                               aria-hidden="true"
                               alt="telegram icon"
-                            />{' '}
+                            />{" "}
                             WhatsApp
                           </button>
                           <button className="mr-2 mt-2 text-white font-bold text-sm border-black border-t-2 border-x-2 border-b-4 text-center rounded-lg py-1 px-2 bg-signal">
@@ -188,7 +217,7 @@ const TaskPopup: React.FC<TaskPopupProps> = ({ open, setOpen }) => {
                               className="h-5 w-5 inline-block align-middle mr-1"
                               aria-hidden="true"
                               alt="telegram icon"
-                            />{' '}
+                            />{" "}
                             Signal
                           </button>
                         </p>
@@ -285,9 +314,9 @@ const TaskPopup: React.FC<TaskPopupProps> = ({ open, setOpen }) => {
                               onMouseLeave={() => setStarHover(0)}
                               onClick={() => setStarSelect(i + 1)}
                               className={classNames(
-                                'w-7 h-7 inline-block mr-2 star-wrapper',
-                                i < starHover && 'hover',
-                                i < starSelect && 'hover'
+                                "w-7 h-7 inline-block mr-2 star-wrapper",
+                                i < starHover && "hover",
+                                i < starSelect && "hover"
                               )}
                             >
                               <StarIcon className="w-6 h-6 star" />

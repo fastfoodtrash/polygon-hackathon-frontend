@@ -37,15 +37,19 @@ const JobPage: NextPage = () => {
 
   const [filter, setFilter] = useState("All");
   const [bookmark, setBookmark] = useState(false);
-  const [all, setAll] = useState(false);
+  const [all, setAll] = useState(true);
   const [taskOpen, setTaskOpen] = useState(false);
   const [namecardOpen, setNamecardOpen] = useState(false);
   const [nameCardType, setNamecardType] = useState<"resume" | "namecard">(
     "resume"
   );
-  const [friendOpen, setFriendOpen] = useState(false);
+  const [friendOpen, setFriendOpen] = useState(true);
   const [addTaskOpen, setAddTaskOpen] = useState(false);
   const [data, setData] = useState([]);
+
+  const [txDetail, setTxDetail] = useState(
+    "0x1b8af7a824d859ecc4f2d44d7f0fbab1b279a5cb1ecbcf68c9edd5f70a6824a1"
+  );
 
   const isActive = useIsActive();
   const accounts = useAccounts();
@@ -145,6 +149,11 @@ const JobPage: NextPage = () => {
     return tempData;
   }, [data, bookmark, all, accounts, filter, search]);
 
+  const taskDetailOpen = (tx: string) => {
+    setTxDetail(tx);
+    setTaskOpen(true);
+  };
+
   return (
     <div>
       <Head>
@@ -155,13 +164,24 @@ const JobPage: NextPage = () => {
 
       <div className="App">
         <LoadingBar open={loading} />
-        <TaskPopup open={taskOpen} setOpen={setTaskOpen} />
+        <TaskPopup
+          tx={txDetail}
+          hooks={hooks}
+          open={taskOpen}
+          setOpen={setTaskOpen}
+          setLoading={setLoading}
+        />
         <NamecardPopup
           type={nameCardType}
           open={namecardOpen}
           setOpen={setNamecardOpen}
         />
-        <FriendPopup open={friendOpen} setOpen={setFriendOpen} />
+        <FriendPopup
+          setLoading={setLoading}
+          hooks={hooks}
+          open={friendOpen}
+          setOpen={setFriendOpen}
+        />
         <AddTaskPopup
           hooks={hooks}
           open={addTaskOpen}
@@ -332,7 +352,7 @@ const JobPage: NextPage = () => {
                     onBookmark={(bookmark: boolean) =>
                       updateBookmark(item.PK, bookmark)
                     }
-                    onClick={() => setTaskOpen(true)}
+                    onClick={() => taskDetailOpen(get(item, "PK", ""))}
                   />
                 ))}
               </div>
