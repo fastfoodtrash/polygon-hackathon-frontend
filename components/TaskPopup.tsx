@@ -343,12 +343,12 @@ const TaskPopup: React.FC<TaskPopupProps> = ({
     }
   };
   const rateCreator = async () => {
-    if (confirm(`Do you want to rate the creator? (Rating: ${starSelect})`)) {
+    if (confirm(`Do you want to rate the employer? (Rating: ${starSelect})`)) {
       setError("");
       setLoading(true);
       if (starSelect <= 0) {
         setLoading(false);
-        setError("Please rate the creator");
+        setError("Please rate the employer");
       } else {
         const connectContract = new Contract(
           CONTRACT_ADDRESS,
@@ -808,7 +808,7 @@ const TaskPopup: React.FC<TaskPopupProps> = ({
                           {get(allComment, "creatorRating", 0) > 0 && (
                             <>
                               <p className="font-bold text-base text-black text-center md:text-left mt-2">
-                                Creator Performance:
+                                Employer Performance:
                               </p>
                               <div className="mt-2 cursor-pointer text-center md:text-left">
                                 {Array.from(Array(totalStar), (e, i) => {
@@ -838,7 +838,7 @@ const TaskPopup: React.FC<TaskPopupProps> = ({
                           {get(allComment, "providerRating", 0) > 0 && (
                             <>
                               <p className="font-bold text-base text-black text-center md:text-left mt-2">
-                                Provider Performance:
+                                Freelancer Performance:
                               </p>
                               <div className="mt-2 cursor-pointer text-center md:text-left">
                                 {Array.from(Array(totalStar), (e, i) => {
@@ -928,7 +928,7 @@ const TaskPopup: React.FC<TaskPopupProps> = ({
                               onClick={() => rateCreator()}
                               className="bg-green font-bold text-sm border-black border-t-2 border-x-2 border-b-4 text-center rounded-lg py-1 px-12"
                             >
-                              Rate The Creator
+                              Rate The Employer
                             </button>
                           )}
                         </>
