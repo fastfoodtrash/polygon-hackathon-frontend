@@ -14,13 +14,13 @@ import {
 import { StarIcon as StarCheckedIcon } from "@heroicons/react/solid";
 
 import { Contract } from "ethers";
-import { BigNumber } from "@ethersproject/bignumber";
+// import { BigNumber } from "@ethersproject/bignumber";
 import { formatEther, parseEther } from "@ethersproject/units";
 import { get, set } from "lodash";
 
 import moment from "moment";
 
-import Dropzone from "../components/Dropzone";
+// import Dropzone from "../components/Dropzone";
 import CONTRACT_ADDRESS from "../contract/service";
 import contractABI from "../contract/TasksV1.json";
 import axios from "../utils/service";
@@ -86,6 +86,7 @@ const TaskPopup: React.FC<TaskPopupProps> = ({
   const [jobDesc, setJobDesc] = useState({});
 
   const [applicant, setApplicant] = useState<Array<string>>([]);
+  const [allComment, setAllComment] = useState({});
 
   useEffect(() => {
     async function fetchData() {
@@ -97,6 +98,7 @@ const TaskPopup: React.FC<TaskPopupProps> = ({
           provider?.getSigner()
         );
         const result = await connectContract.tasks(taskID);
+        console.log(result);
         const tempCreator = get(result, "creator", "").toString();
         const tempStatus = get(result, "status", 0);
         const address = get(accounts, "[0]", "");
@@ -120,6 +122,15 @@ const TaskPopup: React.FC<TaskPopupProps> = ({
               item !== "0x0000000000000000000000000000000000000000"
           );
           setApplicant(applicantResult);
+        }
+        if (tempStatus === 3) {
+          const rating = await connectContract.tasksRating(taskID);
+          setAllComment({
+            commentForCreator: get(rating, "commentForCreator", ""),
+            commentForProvider: get(rating, "commentForProvider", ""),
+            creatorRating: get(rating, "creatorRating", ""),
+            providerRating: get(rating, "providerRating", ""),
+          });
         }
       }
       setLoading(false);
@@ -293,24 +304,76 @@ const TaskPopup: React.FC<TaskPopupProps> = ({
     }
   };
   const approveTask = async () => {
-    if (confirm(`Do you want to approve this submission? (Rating: ${starSelect})`)) {
+    if (
+      confirm(`Do you want to approve this submission? (Rating: ${starSelect})`)
+    ) {
       setError("");
       setLoading(true);
-      const connectContract = new Contract(
-        CONTRACT_ADDRESS,
-        contractABI.abi,
-        provider?.getSigner()
-      );
-      const tx = await connectContract.setTaskCompleted(taskID, starSelect.toString(), comment);
-      if (!tx) {
+      if (starSelect <= 0) {
         setLoading(false);
-        setError("Some issue on the contract");
-        return;
+        setError("Please rate the provider");
+      } else {
+        const connectContract = new Contract(
+          CONTRACT_ADDRESS,
+          contractABI.abi,
+          provider?.getSigner()
+        );
+        const tx = await connectContract.setTaskCompleted(
+          taskID,
+          starSelect.toString(),
+          comment
+        );
+        if (!tx) {
+          setLoading(false);
+          setError("Some issue on the contract");
+          return;
+        }
+        provider!.once(tx.hash, async (tx) => {
+          await axios(
+            "https://liwaiw1kuj.execute-api.ap-southeast-1.amazonaws.com"
+          ).put("/tasks/status", {
+            PK,
+            status: "finished",
+          });
+          setStatus(3);
+          setLoading(false);
+          setError("");
+        });
       }
-      provider!.once(tx.hash, async (tx) => {
+    }
+  };
+  const rateCreator = async () => {
+    if (confirm(`Do you want to rate the creator? (Rating: ${starSelect})`)) {
+      setError("");
+      setLoading(true);
+      if (starSelect <= 0) {
         setLoading(false);
-        setError("");
-      });
+        setError("Please rate the creator");
+      } else {
+        const connectContract = new Contract(
+          CONTRACT_ADDRESS,
+          contractABI.abi,
+          provider?.getSigner()
+        );
+        const tx = await connectContract.rateCreator(
+          taskID,
+          starSelect.toString(),
+          comment
+        );
+        if (!tx) {
+          setLoading(false);
+          setError("Some issue on the contract");
+          return;
+        }
+        provider!.once(tx.hash, async (tx) => {
+          const tempComment = Object.assign({}, allComment);
+          set(tempComment, "commentForCreator", comment);
+          set(tempComment, "creatorRating", starSelect);
+          setAllComment(tempComment);
+          setLoading(false);
+          setError("");
+        });
+      }
     }
   };
   return (
@@ -615,7 +678,7 @@ const TaskPopup: React.FC<TaskPopupProps> = ({
                           </div> */}
                       </div>
                     )}
-                    {status === 2 && creator === wallet && (
+                    {status > 2 && selectedApplicant === wallet && (
                       <div className="mt-4">
                         <p className="font-bold text-base text-black text-center md:text-left">
                           Submission Attachment
@@ -625,42 +688,129 @@ const TaskPopup: React.FC<TaskPopupProps> = ({
                         </p>
                       </div>
                     )}
-                    {status === 2 && creator === wallet && submission && (
+                    {status > 2 && creator === wallet && (
                       <div className="mt-4">
                         <p className="font-bold text-base text-black text-center md:text-left">
-                          Rating
+                          Submission Attachment
                         </p>
-                        <div className="mt-2 cursor-pointer text-center md:text-left">
-                          {Array.from(Array(totalStar), (e, i) => {
-                            return (
-                              <div
-                                key={e}
-                                onMouseEnter={() => setStarHover(i + 1)}
-                                onMouseLeave={() => setStarHover(0)}
-                                onClick={() => setStarSelect(i + 1)}
-                                className={classNames(
-                                  "w-7 h-7 inline-block mr-2 star-wrapper",
-                                  i < starHover && "hover",
-                                  i < starSelect && "hover"
-                                )}
-                              >
-                                <StarIcon className="w-6 h-6 star" />
-                                <StarCheckedIcon className="w-6 h-6 star-checked" />
-                              </div>
-                            );
-                          })}
-                        </div>
-                        <div className="mt-1">
-                          <input
-                            type="text"
-                            placeholder="Comment"
-                            value={comment}
-                            onChange={(e) => setComment(e.target.value)}
-                            className="focus:outline-none text-sm border-black border-t-2 border-x-2 border-b-4 rounded-lg w-full px-4 py-2 mt-2 placeholder:text-black placeholder:font-medium"
-                          />
-                        </div>
+                        <p className="text-black text-sm border-black border-t-2 border-x-2 border-b-4 rounded-lg w-full px-4 py-2 mt-2">
+                          {submission || "Not Yet Submitted"}
+                        </p>
                       </div>
                     )}
+                    {(status === 2 && creator === wallet && submission) ||
+                      (status === 3 &&
+                        selectedApplicant === wallet &&
+                        get(allComment, "creatorRating", 0) === 0 && (
+                          <div className="mt-4">
+                            <p className="font-bold text-base text-black text-center md:text-left">
+                              Rating
+                            </p>
+                            <div className="mt-2 cursor-pointer text-center md:text-left">
+                              {Array.from(Array(totalStar), (e, i) => {
+                                return (
+                                  <div
+                                    key={e}
+                                    onMouseEnter={() => setStarHover(i + 1)}
+                                    onMouseLeave={() => setStarHover(0)}
+                                    onClick={() => setStarSelect(i + 1)}
+                                    className={classNames(
+                                      "w-7 h-7 inline-block mr-2 star-wrapper",
+                                      i < starHover && "hover",
+                                      i < starSelect && "hover"
+                                    )}
+                                  >
+                                    <StarIcon className="w-6 h-6 star" />
+                                    <StarCheckedIcon className="w-6 h-6 star-checked" />
+                                  </div>
+                                );
+                              })}
+                            </div>
+                            <div className="mt-1">
+                              <input
+                                type="text"
+                                placeholder="Comment"
+                                value={comment}
+                                onChange={(e) => setComment(e.target.value)}
+                                className="focus:outline-none text-sm border-black border-t-2 border-x-2 border-b-4 rounded-lg w-full px-4 py-2 mt-2 placeholder:text-black placeholder:font-medium"
+                              />
+                            </div>
+                          </div>
+                        ))}
+                    {status === 3 &&
+                      (creator === wallet ||
+                        (selectedApplicant === wallet &&
+                          get(allComment, "creatorRating", 0) > 0)) && (
+                        <div className="mt-4">
+                          <p className="font-bold text-base text-black text-center md:text-left">
+                            Rating
+                          </p>
+                          {get(allComment, "creatorRating", 0) > 0 && (
+                            <>
+                              <p className="font-bold text-base text-black text-center md:text-left mt-2">
+                                Creator Performance:
+                              </p>
+                              <div className="mt-2 cursor-pointer text-center md:text-left">
+                                {Array.from(Array(totalStar), (e, i) => {
+                                  return (
+                                    <div
+                                      key={e}
+                                      className={classNames(
+                                        "w-7 h-7 inline-block mr-2 star-wrapper",
+                                        i <
+                                          get(allComment, "creatorRating", 0) &&
+                                          "hover"
+                                      )}
+                                    >
+                                      <StarIcon className="w-6 h-6 star" />
+                                      <StarCheckedIcon className="w-6 h-6 star-checked" />
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                              <div className="mt-1">
+                                <p className="text-sm border-black border-t-2 border-x-2 border-b-4 rounded-lg w-full px-4 py-2 mt-2 text-black">
+                                  {get(allComment, "commentForCreator", "")}
+                                </p>
+                              </div>
+                            </>
+                          )}
+                          {get(allComment, "providerRating", 0) > 0 && (
+                            <>
+                              <p className="font-bold text-base text-black text-center md:text-left mt-2">
+                                Provider Performance:
+                              </p>
+                              <div className="mt-2 cursor-pointer text-center md:text-left">
+                                {Array.from(Array(totalStar), (e, i) => {
+                                  return (
+                                    <div
+                                      key={e}
+                                      className={classNames(
+                                        "w-7 h-7 inline-block mr-2 star-wrapper",
+                                        i <
+                                          get(
+                                            allComment,
+                                            "providerRating",
+                                            0
+                                          ) && "hover"
+                                      )}
+                                    >
+                                      <StarIcon className="w-6 h-6 star" />
+                                      <StarCheckedIcon className="w-6 h-6 star-checked" />
+                                    </div>
+                                  );
+                                })}
+                              </div>
+
+                              <div className="mt-1">
+                                <p className="text-sm border-black border-t-2 border-x-2 border-b-4 rounded-lg w-full px-4 py-2 mt-2 text-black">
+                                  {get(allComment, "commentForProvider", "")}
+                                </p>
+                              </div>
+                            </>
+                          )}
+                        </div>
+                      )}
                     {error && <p className="w-full mt-4">{error}</p>}
                     <div className="w-full mt-4">
                       {creator === wallet && status === 0 && (
@@ -700,6 +850,18 @@ const TaskPopup: React.FC<TaskPopupProps> = ({
                           )}
                         </>
                       )}
+                      {selectedApplicant === wallet && status === 3 && (
+                        <>
+                          {get(allComment, "creatorRating", 0) === 0 && (
+                            <button
+                              onClick={() => rateCreator()}
+                              className="bg-green font-bold text-sm border-black border-t-2 border-x-2 border-b-4 text-center rounded-lg py-1 px-12"
+                            >
+                              Rate The Creator
+                            </button>
+                          )}
+                        </>
+                      )}
                       {creator !== wallet && status === 0 && (
                         <>
                           {applicant.includes(wallet) ? (
@@ -719,18 +881,6 @@ const TaskPopup: React.FC<TaskPopupProps> = ({
                           )}
                         </>
                       )}
-                      {/* <button className="font-bold text-sm border-black border-t-2 border-x-2 border-b-4 text-center rounded-lg py-1 px-12">
-                    Apply Now
-                  </button>
-                  <button className="font-bold text-sm border-black border-t-2 border-x-2 border-b-4 text-center rounded-lg py-1 px-12 ml-4">
-                    Bookmark
-                  </button> */}
-                      {/* <button className="cursor-not-allowed bg-gray font-bold text-sm border-black border-t-2 border-x-2 border-b-4 text-center rounded-lg py-1 px-12">
-                        Cancel Task
-                      </button>
-                      <button className="cursor-not-allowed bg-gray font-bold text-sm border-black border-t-2 border-x-2 border-b-4 text-center rounded-lg py-1 px-12 ml-4">
-                        Submit Task
-                      </button> */}
                     </div>
                   </div>
                 </div>

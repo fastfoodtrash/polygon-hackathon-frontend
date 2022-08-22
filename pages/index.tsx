@@ -47,11 +47,11 @@ const JobPage: NextPage = () => {
   const [addTaskOpen, setAddTaskOpen] = useState(false);
   const [data, setData] = useState([]);
 
-  const [taskID, setTaskID] = useState("6");
-  const [PK, setPK] = useState("0x1b8af7a824d859ecc4f2d44d7f0fbab1b279a5cb1ecbcf68c9edd5f70a6824a1");
+  const [taskID, setTaskID] = useState("8");
+  const [PK, setPK] = useState("0xfe762a8005d6a9f9522f139fa3537f46c3862b212fda26af354afccf30d48a67");
   const [tastDetail, setTaskDetail] = useState({
     userBookmarked: 0,
-    userView: 1000,
+    userView: 0,
   });
 
   const isActive = useIsActive();
@@ -152,7 +152,13 @@ const JobPage: NextPage = () => {
     return tempData;
   }, [data, bookmark, all, accounts, filter, search]);
 
-  const taskDetailOpen = (taskID: string) => {
+  const taskDetailOpen = (item: any) => {
+    setTaskID(get(item, 'taskID', ''));
+    setPK(get(item, 'PK', ''));
+    setTaskDetail({
+      userBookmarked: get(item, 'bookmark', []).length,
+      userView: get(item, 'apply', []).length,
+    })
     setTaskOpen(true);
   };
 
@@ -313,7 +319,7 @@ const JobPage: NextPage = () => {
                       onBookmark={(bookmark: boolean) =>
                         updateBookmark(item.PK, bookmark)
                       }
-                      onClick={() => setTaskOpen(true)}
+                      onClick={() => taskDetailOpen(item)}
                     />
                   ))}
                 </div>
@@ -356,7 +362,7 @@ const JobPage: NextPage = () => {
                     onBookmark={(bookmark: boolean) =>
                       updateBookmark(item.PK, bookmark)
                     }
-                    onClick={() => taskDetailOpen(get(item, "PK", ""))}
+                    onClick={() => taskDetailOpen(item)}
                   />
                 ))}
               </div>

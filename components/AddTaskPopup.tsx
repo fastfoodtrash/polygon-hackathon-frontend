@@ -67,14 +67,16 @@ const AddTaskPopup: React.FC<AddTaskPopupProps> = ({
   // const [salary, setSalary] = useState("0.01");
   const [salary, setSalary] = useState("");
   const [description, setDescription] = useState({});
-  // companyName: "Company Name",
-  // companyType: "Company Type",
-  // postName: "Post Name",
-  // jobDuration: "20",
-  // jobType: { value: "Frontend", label: "Frontend" },
-  // stacks: [{ label: "React", value: "React" }],
-  // jobDescription: "Sample Description",
-  // discord: "@samsek",
+  // const [description, setDescription] = useState({
+  //   companyName: "Company Name",
+  //   companyType: "Company Type",
+  //   postName: "Post Name",
+  //   jobDuration: "20",
+  //   jobType: { value: "Frontend", label: "Frontend" },
+  //   stacks: [{ label: "React", value: "React" }],
+  //   jobDescription: "Sample Description",
+  //   discord: "@samsek",
+  // });
   const [error, setError] = useState("");
 
   const cancelButtonRef = useRef(null);
@@ -183,7 +185,7 @@ const AddTaskPopup: React.FC<AddTaskPopupProps> = ({
         }
         provider!.once(tx.hash, async (tx) => {
           // cache server
-          const result = await axios(
+          await axios(
             "https://liwaiw1kuj.execute-api.ap-southeast-1.amazonaws.com"
           ).post("/tasks", {
             ...description,
@@ -196,11 +198,24 @@ const AddTaskPopup: React.FC<AddTaskPopupProps> = ({
             tx: get(tx, "transactionHash", ""),
             ipfs: get(ipfs, "data", {}),
           });
-          setDescription({});
-          setSalary("");
-          setError("");
-          setLoading(false);
-          setOpen(false);
+          connectContract.on(
+            "0xadca11b273fe1ba007c6a34b6348e66e3650c3c46cd1bbd731f1b8b4d583945c",
+            async (id, task, address) => {
+              if (address === get(accounts, '[0]', '')) {
+                await axios(
+                  "https://liwaiw1kuj.execute-api.ap-southeast-1.amazonaws.com"
+                ).put("/tasks/taskID", {
+                  PK: get(tx, "transactionHash", ""),
+                  taskID: id.toString(),
+                });
+              }
+              setDescription({});
+              setSalary("");
+              setError("");
+              setLoading(false);
+              setOpen(false);
+            }
+          );
         });
       } else {
         setLoading(false);
