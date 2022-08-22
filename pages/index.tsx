@@ -47,8 +47,8 @@ const JobPage: NextPage = () => {
   const [addTaskOpen, setAddTaskOpen] = useState(false);
   const [data, setData] = useState([]);
 
-  const [taskID, setTaskID] = useState("8");
-  const [PK, setPK] = useState("0xfe762a8005d6a9f9522f139fa3537f46c3862b212fda26af354afccf30d48a67");
+  const [taskID, setTaskID] = useState("1");
+  const [PK, setPK] = useState("");
   const [tastDetail, setTaskDetail] = useState({
     userBookmarked: 0,
     userView: 0,
@@ -57,15 +57,16 @@ const JobPage: NextPage = () => {
   const isActive = useIsActive();
   const accounts = useAccounts();
 
+  const fetchData = async () => {
+    const response = await axios(
+      "https://liwaiw1kuj.execute-api.ap-southeast-1.amazonaws.com"
+    ).get("/tasks");
+    const tempData = get(response, "data.data", []);
+    setData(tempData);
+    setLoading(false);
+  }
+
   useEffect(() => {
-    async function fetchData() {
-      const response = await axios(
-        "https://liwaiw1kuj.execute-api.ap-southeast-1.amazonaws.com"
-      ).get("/tasks");
-      const tempData = get(response, "data.data", []);
-      setData(tempData);
-      setLoading(false);
-    }
     fetchData();
   }, []);
 
@@ -98,6 +99,12 @@ const JobPage: NextPage = () => {
     setLogin(isActive);
   }, [isActive]);
 
+  useEffect(() => {
+    if (!addTaskOpen || !taskOpen) {
+      fetchData();
+    }
+  }, [addTaskOpen, taskOpen]);
+
   const updateBookmark = async (PK: string, bookmark: boolean) => {
     const tempData = Object.assign([], data);
     const index = tempData.findIndex((item: any) => item.PK === PK);
@@ -125,7 +132,9 @@ const JobPage: NextPage = () => {
     let tempData = Object.assign([], data);
     if (all) {
       tempData = tempData.filter(
-        (item: any) => get(item, "wallet", "") !== wallet
+        (item: any) =>
+          get(item, "wallet", "") !== wallet &&
+          get(item, "status", "") === "pending"
       );
       if (bookmark) {
         tempData = tempData.filter((item: any) =>
@@ -141,7 +150,9 @@ const JobPage: NextPage = () => {
       tempData = tempData.filter(
         (item: any) =>
           get(item, "wallet", "") === wallet ||
-          get(item, "apply", []).includes(wallet)
+          get(item, "selectedApply", "") === wallet ||
+          (get(item, "apply", []).includes(wallet) &&
+            get(item, "selectedApply", "") !== wallet)
       );
     }
     if (search) {
@@ -153,12 +164,12 @@ const JobPage: NextPage = () => {
   }, [data, bookmark, all, accounts, filter, search]);
 
   const taskDetailOpen = (item: any) => {
-    setTaskID(get(item, 'taskID', ''));
-    setPK(get(item, 'PK', ''));
+    setTaskID(get(item, "taskID", ""));
+    setPK(get(item, "PK", ""));
     setTaskDetail({
-      userBookmarked: get(item, 'bookmark', []).length,
-      userView: get(item, 'apply', []).length,
-    })
+      userBookmarked: get(item, "bookmark", []).length,
+      userView: get(item, "apply", []).length,
+    });
     setTaskOpen(true);
   };
 
@@ -182,7 +193,7 @@ const JobPage: NextPage = () => {
           PK={PK}
         />
         <NamecardPopup
-          address={get(accounts, '[0]', '')}
+          address={get(accounts, "[0]", "")}
           hooks={hooks}
           type={nameCardType}
           open={namecardOpen}
