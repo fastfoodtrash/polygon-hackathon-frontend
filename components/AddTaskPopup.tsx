@@ -156,17 +156,17 @@ const AddTaskPopup: React.FC<AddTaskPopupProps> = ({
       if (!showError) {
         // IPFS
         const ipfs = await axios(
-          "https://xjuqbit618.execute-api.us-east-1.amazonaws.com"
+          "https://liwaiw1kuj.execute-api.ap-southeast-1.amazonaws.com"
         ).post(
-          "/dev/upload",
-          JSON.stringify({
+          "/ipfs",
+          {
             ...description,
             salary,
             discord,
             whatsapp,
             telegram,
             signal,
-          })
+          }
         );
         // Contract
         const referenceCode = moment().unix();
@@ -177,7 +177,7 @@ const AddTaskPopup: React.FC<AddTaskPopupProps> = ({
         );
         const tx = await connectContract.createTask(
           get(description, "jobDuration", ""),
-          get(ipfs, "data.url", ""),
+          get(ipfs, "data.data", ""),
           referenceCode.toString(),
           { value: parseEther(salary).toString() }
         );
@@ -199,7 +199,7 @@ const AddTaskPopup: React.FC<AddTaskPopupProps> = ({
             telegram,
             signal,
             tx: get(tx, "transactionHash", ""),
-            ipfs: get(ipfs, "data", {}),
+            ipfs: get(ipfs, "data.data", ""),
           });
           connectContract.on(
             "0xadca11b273fe1ba007c6a34b6348e66e3650c3c46cd1bbd731f1b8b4d583945c",

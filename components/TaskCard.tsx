@@ -19,7 +19,7 @@ interface TaskCardProps {
   jobName: string;
   userView: number;
   userBookmarked: number;
-  slack: string;
+  slack: Array<string>;
   onClick: () => void;
   onBookmark?: (bookmark: boolean) => void;
 }
@@ -129,7 +129,7 @@ const TaskCard: React.FC<TaskCardProps> = ({
           <div className="col-span-1 row-span-2 relative">
             <div className="ml-auto relative w-24 h-24 rounded-full border-black border-t-2 border-x-2 border-b-4 text-center">
               <img
-                src={`/assets/stack/stack_${slack}.png`}
+                src={`/assets/stack/stack_${slack[0]}.png`}
                 className="position-center w-4/5"
                 alt="Slack Icon"
               />

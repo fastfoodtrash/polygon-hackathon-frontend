@@ -164,7 +164,6 @@ const JobPage: NextPage = () => {
   }, [data, bookmark, all, accounts, filter, search]);
 
   const taskDetailOpen = (item: any) => {
-    console.log(item);
     setTaskID(get(item, "taskID", "").toString());
     setPK(get(item, "PK", ""));
     setTaskDetail({
